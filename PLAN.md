@@ -41,9 +41,9 @@
 ## Phase 4: Grievance System
 **Goal**: Implement complaint management and tracking.
 
-- [ ] Complaint submission form (touch-optimized)
-- [ ] Ticket number generation
-- [ ] Status tracking API
+- [x] Complaint submission form (touch-optimized)
+- [x] Ticket number generation
+- [x] Status tracking API
 - [ ] Admin review and resolution workflow
 - [ ] Notification system for updates
 

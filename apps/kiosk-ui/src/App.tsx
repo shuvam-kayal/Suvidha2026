@@ -1,6 +1,6 @@
 /**
  * SUVIDHA Kiosk UI - Main Application
- * Touch-optimized routes with authentication and billing
+ * Touch-optimized routes with authentication, billing, and grievance
  */
 
 import { Routes, Route } from 'react-router-dom';
@@ -13,6 +13,8 @@ import ServicesPage from './pages/ServicesPage';
 import BillsPage from './pages/BillsPage';
 import BillDetailsPage from './pages/BillDetailsPage';
 import PaymentPage from './pages/PaymentPage';
+import FileComplaintPage from './pages/FileComplaintPage';
+import TrackComplaintPage from './pages/TrackComplaintPage';
 
 function App() {
     return (
@@ -61,6 +63,18 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+
+                {/* Grievance routes */}
+                <Route
+                    path="/grievance/new"
+                    element={
+                        <ProtectedRoute>
+                            <FileComplaintPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route path="/grievance/track" element={<TrackComplaintPage />} />
+                <Route path="/grievance/track/:ticketNumber" element={<TrackComplaintPage />} />
             </Route>
         </Routes>
     );
