@@ -284,6 +284,112 @@ app.get('/complaints/track/:ticketNumber', (req: Request, res: Response) => {
 });
 
 // =============================================================================
+// ADMIN: UPDATE COMPLAINT STATUS (Resolution Workflow)
+// =============================================================================
+
+app.patch('/complaints/:complaintId/status', (req: Request, res: Response) => {
+    try {
+        const { complaintId } = req.params;
+        const { status, message, resolvedBy } = req.body;
+        const adminId = req.headers['x-admin-id'] as string || 'admin';
+
+        const complaint = complaints.find(c => c.id === complaintId);
+
+        if (!complaint) {
+            return res.status(404).json({ error: 'Complaint not found' });
+        }
+
+        const validStatuses: ComplaintStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ESCALATED'];
+        if (status && !validStatuses.includes(status)) {
+            return res.status(400).json({
+                error: 'Invalid status',
+                validStatuses
+            });
+        }
+
+        const now = new Date().toISOString();
+
+        if (status) {
+            complaint.status = status;
+            complaint.updatedAt = now;
+
+            if (status === 'RESOLVED') {
+                complaint.resolvedAt = now;
+            }
+        }
+
+        // Add update to history
+        if (message) {
+            complaint.updates.push({
+                id: 'upd_' + Date.now(),
+                message,
+                createdBy: resolvedBy || adminId,
+                createdAt: now,
+            });
+        }
+
+        console.log(`✅ Complaint ${complaint.ticketNumber} updated to ${status} by ${adminId}`);
+
+        res.json({
+            success: true,
+            message: 'Complaint updated successfully',
+            complaint: {
+                id: complaint.id,
+                ticketNumber: complaint.ticketNumber,
+                status: complaint.status,
+                updatedAt: complaint.updatedAt,
+                resolvedAt: complaint.resolvedAt,
+            },
+        });
+    } catch (error) {
+        console.error('Update complaint error:', error);
+        res.status(500).json({ error: 'Failed to update complaint' });
+    }
+});
+
+// =============================================================================
+// ADMIN: ADD UPDATE/COMMENT TO COMPLAINT
+// =============================================================================
+
+app.post('/complaints/:complaintId/updates', (req: Request, res: Response) => {
+    try {
+        const { complaintId } = req.params;
+        const { message } = req.body;
+        const adminId = req.headers['x-admin-id'] as string || 'admin';
+
+        const complaint = complaints.find(c => c.id === complaintId);
+
+        if (!complaint) {
+            return res.status(404).json({ error: 'Complaint not found' });
+        }
+
+        if (!message || message.trim().length < 5) {
+            return res.status(400).json({ error: 'Message must be at least 5 characters' });
+        }
+
+        const update: ComplaintUpdate = {
+            id: 'upd_' + Date.now(),
+            message: message.trim(),
+            createdBy: adminId,
+            createdAt: new Date().toISOString(),
+        };
+
+        complaint.updates.push(update);
+        complaint.updatedAt = update.createdAt;
+
+        console.log(`💬 Update added to ${complaint.ticketNumber} by ${adminId}`);
+
+        res.json({
+            success: true,
+            update,
+        });
+    } catch (error) {
+        console.error('Add update error:', error);
+        res.status(500).json({ error: 'Failed to add update' });
+    }
+});
+
+// =============================================================================
 // GET COMPLAINT DETAILS
 // =============================================================================
 
