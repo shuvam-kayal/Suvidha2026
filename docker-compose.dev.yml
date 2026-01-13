@@ -1,0 +1,74 @@
+# Development overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  api-gateway:
+    build:
+      context: ./apps/api-gateway
+      dockerfile: Dockerfile.dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./apps/api-gateway/src:/app/src:ro
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Node debugger
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile.dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./services/auth-service/src:/app/src:ro
+    ports:
+      - "3001:3001"
+
+  billing-service:
+    build:
+      context: ./services/billing-service
+      dockerfile: Dockerfile.dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./services/billing-service/src:/app/src:ro
+    ports:
+      - "3002:3002"
+
+  grievance-service:
+    build:
+      context: ./services/grievance-service
+      dockerfile: Dockerfile.dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./services/grievance-service/src:/app/src:ro
+    ports:
+      - "3003:3003"
+
+  kiosk-ui:
+    build:
+      context: ./apps/kiosk-ui
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./apps/kiosk-ui/src:/app/src:ro
+      - ./apps/kiosk-ui/public:/app/public:ro
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+
+  admin-portal:
+    build:
+      context: ./apps/admin-portal
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./apps/admin-portal/src:/app/src:ro
+      - ./apps/admin-portal/public:/app/public:ro
+    ports:
+      - "5174:5174"
+    environment:
+      - VITE_API_URL=http://localhost:3000

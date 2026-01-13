@@ -1,0 +1,8 @@
+{
+    "name": "@suvidha/types",
+    "version": "1.0.0",
+    "description": "Shared TypeScript type definitions for SUVIDHA 2026",
+    "main": "index.ts",
+    "types": "index.ts",
+    "private": true
+}

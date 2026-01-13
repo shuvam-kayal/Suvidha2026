@@ -1,0 +1,171 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # INFRASTRUCTURE
+  # =============================================================================
+  
+  postgres:
+    image: postgres:16-alpine
+    container_name: suvidha-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-suvidha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-suvidha_secure_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-suvidha_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - suvidha-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-suvidha}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: suvidha-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_2026}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - suvidha-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD:-redis_secure_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # API GATEWAY
+  # =============================================================================
+  
+  api-gateway:
+    build:
+      context: ./apps/api-gateway
+      dockerfile: Dockerfile
+    container_name: suvidha-gateway
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      BILLING_SERVICE_URL: http://billing-service:3002
+      GRIEVANCE_SERVICE_URL: http://grievance-service:3003
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_change_in_production}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2026}@redis:6379
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - suvidha-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # MICROSERVICES
+  # =============================================================================
+  
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: suvidha-auth
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-suvidha}:${POSTGRES_PASSWORD:-suvidha_secure_2026}@postgres:5432/${POSTGRES_DB:-suvidha_db}
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_change_in_production}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2026}@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - suvidha-network
+    restart: unless-stopped
+
+  billing-service:
+    build:
+      context: ./services/billing-service
+      dockerfile: Dockerfile
+    container_name: suvidha-billing
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER:-suvidha}:${POSTGRES_PASSWORD:-suvidha_secure_2026}@postgres:5432/${POSTGRES_DB:-suvidha_db}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2026}@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - suvidha-network
+    restart: unless-stopped
+
+  grievance-service:
+    build:
+      context: ./services/grievance-service
+      dockerfile: Dockerfile
+    container_name: suvidha-grievance
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      DATABASE_URL: postgresql://${POSTGRES_USER:-suvidha}:${POSTGRES_PASSWORD:-suvidha_secure_2026}@postgres:5432/${POSTGRES_DB:-suvidha_db}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2026}@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - suvidha-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # FRONTEND APPLICATIONS
+  # =============================================================================
+  
+  kiosk-ui:
+    build:
+      context: ./apps/kiosk-ui
+      dockerfile: Dockerfile
+    container_name: suvidha-kiosk
+    ports:
+      - "8080:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - suvidha-network
+    restart: unless-stopped
+
+  admin-portal:
+    build:
+      context: ./apps/admin-portal
+      dockerfile: Dockerfile
+    container_name: suvidha-admin
+    ports:
+      - "8081:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - suvidha-network
+    restart: unless-stopped
+
+# =============================================================================
+# NETWORKS & VOLUMES
+# =============================================================================
+
+networks:
+  suvidha-network:
+    driver: bridge
+    name: suvidha-network
+
+volumes:
+  postgres_data:
+    name: suvidha-postgres-data
+  redis_data:
+    name: suvidha-redis-data

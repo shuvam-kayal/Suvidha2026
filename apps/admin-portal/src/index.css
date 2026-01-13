@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    body {
+        @apply bg-slate-900 text-slate-100 min-h-screen;
+    }
+}
+
+@layer components {
+    .sidebar-link {
+        @apply flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors duration-150;
+    }
+
+    .sidebar-link-active {
+        @apply bg-blue-600 text-white;
+    }
+
+    .stat-card {
+        @apply bg-slate-800 border border-slate-700 rounded-xl p-6;
+    }
+
+    .btn-admin {
+        @apply px-4 py-2 rounded-lg font-medium transition-colors duration-150;
+    }
+
+    .btn-admin-primary {
+        @apply btn-admin bg-blue-600 text-white hover:bg-blue-500;
+    }
+}

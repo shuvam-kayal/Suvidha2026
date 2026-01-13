@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   KIOSK BASE STYLES
+   ============================================================================= */
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-kiosk-bg text-kiosk-text min-h-screen;
+    overflow-x: hidden;
+  }
+
+  /* Kiosk-optimized focus states for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-4 ring-primary-500 ring-offset-2 ring-offset-kiosk-bg;
+  }
+}
+
+/* =============================================================================
+   KIOSK COMPONENT CLASSES
+   ============================================================================= */
+
+@layer components {
+  /* Touch-friendly button base */
+  .btn-kiosk {
+    @apply flex items-center justify-center gap-3
+           min-h-touch min-w-touch px-8 py-4
+           text-kiosk-lg font-semibold
+           rounded-kiosk-lg
+           transition-all duration-150
+           active:scale-[0.97] active:animate-button-press
+           focus-visible:ring-4 focus-visible:ring-primary-400
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  .btn-primary {
+    @apply btn-kiosk bg-primary-600 text-white
+           hover:bg-primary-500
+           shadow-kiosk hover:shadow-kiosk-lg;
+  }
+
+  .btn-secondary {
+    @apply btn-kiosk bg-secondary-600 text-white
+           hover:bg-secondary-500
+           shadow-kiosk hover:shadow-kiosk-lg;
+  }
+
+  .btn-outline {
+    @apply btn-kiosk bg-transparent text-kiosk-text
+           border-2 border-kiosk-border
+           hover:bg-kiosk-card hover:border-primary-500;
+  }
+
+  .btn-danger {
+    @apply btn-kiosk bg-error text-white
+           hover:bg-red-700
+           shadow-kiosk;
+  }
+
+  /* Card component */
+  .card-kiosk {
+    @apply bg-kiosk-card border border-kiosk-border
+           rounded-kiosk-xl p-6
+           shadow-kiosk
+           animate-fade-in;
+  }
+
+  /* Kiosk input fields */
+  .input-kiosk {
+    @apply w-full min-h-touch
+           px-6 py-4
+           text-kiosk-base text-kiosk-text
+           bg-kiosk-bg border-2 border-kiosk-border
+           rounded-kiosk-lg
+           placeholder:text-kiosk-muted
+           focus:border-primary-500 focus:ring-0
+           transition-colors duration-150;
+  }
+
+  /* Service tile for dashboard */
+  .service-tile {
+    @apply card-kiosk
+           flex flex-col items-center justify-center gap-4
+           min-h-[180px] p-8
+           cursor-pointer
+           hover:border-primary-500 hover:shadow-kiosk-glow
+           active:scale-[0.98]
+           transition-all duration-150;
+  }
+
+  /* Language selector */
+  .lang-btn {
+    @apply px-4 py-2
+           text-kiosk-sm font-medium
+           rounded-kiosk
+           border border-kiosk-border
+           hover:bg-kiosk-card hover:border-primary-500
+           transition-colors duration-150;
+  }
+
+  .lang-btn-active {
+    @apply bg-primary-600 text-white border-primary-600;
+  }
+}
+
+/* =============================================================================
+   KIOSK LAYOUT UTILITIES
+   ============================================================================= */
+
+@layer utilities {
+  /* Full kiosk screen layout */
+  .kiosk-layout {
+    @apply min-h-screen flex flex-col;
+  }
+
+  /* Header area */
+  .kiosk-header {
+    @apply h-20 flex items-center justify-between px-8
+           bg-kiosk-card border-b border-kiosk-border;
+  }
+
+  /* Main content area */
+  .kiosk-main {
+    @apply flex-1 p-8 overflow-auto;
+  }
+
+  /* Footer/action area */
+  .kiosk-footer {
+    @apply h-24 flex items-center justify-center gap-4 px-8
+           bg-kiosk-card border-t border-kiosk-border;
+  }
+
+  /* Grid layouts */
+  .grid-services {
+    @apply grid grid-cols-2 lg:grid-cols-4 gap-6;
+  }
+
+  /* Text utilities */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent;
+  }
+}
