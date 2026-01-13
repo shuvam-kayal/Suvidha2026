@@ -30,11 +30,11 @@
 ## Phase 3: Billing Module
 **Goal**: Build bill fetching and payment simulation.
 
-- [ ] Database schema for utility bills (Electricity, Gas, Water)
-- [ ] Bill fetch API for each utility type
-- [ ] Payment history and receipts
-- [ ] Payment gateway simulation
-- [ ] Transaction logging and audit trail
+- [x] Database schema for utility bills (Mock data for now)
+- [x] Bill fetch API for each utility type
+- [x] Payment history and receipts
+- [x] Payment gateway simulation
+- [x] Transaction logging and audit trail
 
 ---
 

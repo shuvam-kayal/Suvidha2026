@@ -1,6 +1,6 @@
 /**
  * SUVIDHA Kiosk UI - Main Application
- * Updated with protected routes and auth integration
+ * Touch-optimized routes with authentication and billing
  */
 
 import { Routes, Route } from 'react-router-dom';
@@ -10,6 +10,9 @@ import WelcomePage from './pages/WelcomePage';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import ServicesPage from './pages/ServicesPage';
+import BillsPage from './pages/BillsPage';
+import BillDetailsPage from './pages/BillDetailsPage';
+import PaymentPage from './pages/PaymentPage';
 
 function App() {
     return (
@@ -29,6 +32,32 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <ServicesPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Billing routes */}
+                <Route
+                    path="/bills/:type"
+                    element={
+                        <ProtectedRoute>
+                            <BillsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/bill/:billId"
+                    element={
+                        <ProtectedRoute>
+                            <BillDetailsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/pay/:billId"
+                    element={
+                        <ProtectedRoute>
+                            <PaymentPage />
                         </ProtectedRoute>
                     }
                 />

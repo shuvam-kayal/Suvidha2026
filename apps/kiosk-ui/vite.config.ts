@@ -25,6 +25,12 @@ export default defineConfig({
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api\/v1\/auth/, ''),
             },
+            // Billing service - direct connection in development
+            '/api/v1/billing': {
+                target: 'http://localhost:3002',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/v1\/billing/, ''),
+            },
             // Other services - through API Gateway
             '/api': {
                 target: 'http://localhost:3000',
