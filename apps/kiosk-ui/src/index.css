@@ -30,81 +30,46 @@
    ============================================================================= */
 
 @layer components {
+
   /* Touch-friendly button base */
   .btn-kiosk {
-    @apply flex items-center justify-center gap-3
-           min-h-touch min-w-touch px-8 py-4
-           text-kiosk-lg font-semibold
-           rounded-kiosk-lg
-           transition-all duration-150
-           active:scale-[0.97] active:animate-button-press
-           focus-visible:ring-4 focus-visible:ring-primary-400
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+    @apply flex items-center justify-center gap-3 min-h-touch min-w-touch px-8 py-4 text-kiosk-lg font-semibold rounded-kiosk-lg transition-all duration-150 active:scale-[0.97] active:animate-button-press focus-visible:ring-4 focus-visible:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
   }
 
   .btn-primary {
-    @apply btn-kiosk bg-primary-600 text-white
-           hover:bg-primary-500
-           shadow-kiosk hover:shadow-kiosk-lg;
+    @apply btn-kiosk bg-primary-600 text-white hover:bg-primary-500 shadow-kiosk hover:shadow-kiosk-lg;
   }
 
   .btn-secondary {
-    @apply btn-kiosk bg-secondary-600 text-white
-           hover:bg-secondary-500
-           shadow-kiosk hover:shadow-kiosk-lg;
+    @apply btn-kiosk bg-secondary-600 text-white hover:bg-secondary-500 shadow-kiosk hover:shadow-kiosk-lg;
   }
 
   .btn-outline {
-    @apply btn-kiosk bg-transparent text-kiosk-text
-           border-2 border-kiosk-border
-           hover:bg-kiosk-card hover:border-primary-500;
+    @apply btn-kiosk bg-transparent text-kiosk-text border-2 border-kiosk-border hover:bg-kiosk-card hover:border-primary-500;
   }
 
   .btn-danger {
-    @apply btn-kiosk bg-error text-white
-           hover:bg-red-700
-           shadow-kiosk;
+    @apply btn-kiosk bg-error text-white hover:bg-red-700 shadow-kiosk;
   }
 
   /* Card component */
   .card-kiosk {
-    @apply bg-kiosk-card border border-kiosk-border
-           rounded-kiosk-xl p-6
-           shadow-kiosk
-           animate-fade-in;
+    @apply bg-kiosk-card border border-kiosk-border rounded-kiosk-xl p-6 shadow-kiosk animate-fade-in;
   }
 
   /* Kiosk input fields */
   .input-kiosk {
-    @apply w-full min-h-touch
-           px-6 py-4
-           text-kiosk-base text-kiosk-text
-           bg-kiosk-bg border-2 border-kiosk-border
-           rounded-kiosk-lg
-           placeholder:text-kiosk-muted
-           focus:border-primary-500 focus:ring-0
-           transition-colors duration-150;
+    @apply w-full min-h-touch px-6 py-4 text-kiosk-base text-kiosk-text bg-kiosk-bg border-2 border-kiosk-border rounded-kiosk-lg placeholder:text-kiosk-muted focus:border-primary-500 focus:ring-0 transition-colors duration-150;
   }
 
   /* Service tile for dashboard */
   .service-tile {
-    @apply card-kiosk
-           flex flex-col items-center justify-center gap-4
-           min-h-[180px] p-8
-           cursor-pointer
-           hover:border-primary-500 hover:shadow-kiosk-glow
-           active:scale-[0.98]
-           transition-all duration-150;
+    @apply card-kiosk flex flex-col items-center justify-center gap-4 min-h-[180px] p-8 cursor-pointer hover:border-primary-500 hover:shadow-kiosk-glow active:scale-[0.98] transition-all duration-150;
   }
 
   /* Language selector */
   .lang-btn {
-    @apply px-4 py-2
-           text-kiosk-sm font-medium
-           rounded-kiosk
-           border border-kiosk-border
-           hover:bg-kiosk-card hover:border-primary-500
-           transition-colors duration-150;
+    @apply px-4 py-2 text-kiosk-sm font-medium rounded-kiosk border border-kiosk-border hover:bg-kiosk-card hover:border-primary-500 transition-colors duration-150;
   }
 
   .lang-btn-active {
@@ -117,6 +82,7 @@
    ============================================================================= */
 
 @layer utilities {
+
   /* Full kiosk screen layout */
   .kiosk-layout {
     @apply min-h-screen flex flex-col;
@@ -124,8 +90,7 @@
 
   /* Header area */
   .kiosk-header {
-    @apply h-20 flex items-center justify-between px-8
-           bg-kiosk-card border-b border-kiosk-border;
+    @apply h-20 flex items-center justify-between px-8 bg-kiosk-card border-b border-kiosk-border;
   }
 
   /* Main content area */
@@ -135,8 +100,7 @@
 
   /* Footer/action area */
   .kiosk-footer {
-    @apply h-24 flex items-center justify-center gap-4 px-8
-           bg-kiosk-card border-t border-kiosk-border;
+    @apply h-24 flex items-center justify-center gap-4 px-8 bg-kiosk-card border-t border-kiosk-border;
   }
 
   /* Grid layouts */
@@ -148,4 +112,73 @@
   .text-gradient {
     @apply bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent;
   }
+}
+
+/* =============================================================================
+   ANIMATIONS
+   ============================================================================= */
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Scan line animation for document scanner */
+@keyframes scan-line {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(calc(100% - 4px));
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-scan-line {
+  animation: scan-line 2s ease-in-out infinite;
 }

@@ -1,12 +1,14 @@
 /**
  * Kiosk Layout - Touch-Friendly Shell
- * Updated with auth-aware navigation
+ * Updated with auth-aware navigation and real-time notifications
  */
 
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Home, ArrowLeft, LogIn, LogOut } from 'lucide-react';
 import LanguageSelector from '../components/LanguageSelector';
+import NewsTicker from '../components/NewsTicker';
+import VoiceAssistant from '../components/VoiceAssistant';
 import { useAuthStore } from '../stores/authStore';
 import { logout } from '../lib/api';
 
@@ -79,17 +81,17 @@ export default function KioskLayout() {
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="kiosk-main">
+            {/* Main Content - add bottom padding for news ticker */}
+            <main className="kiosk-main pb-16">
                 <Outlet />
             </main>
 
-            {/* Footer */}
-            <footer className="kiosk-footer">
-                <p className="text-kiosk-sm text-kiosk-muted">
-                    © 2026 SUVIDHA - C-DAC Smart India Initiative
-                </p>
-            </footer>
+            {/* Real-time News Ticker (replaces static footer) */}
+            <NewsTicker />
+
+            {/* Voice Assistant - floating button */}
+            <VoiceAssistant />
         </div>
     );
 }
+

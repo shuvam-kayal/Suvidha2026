@@ -1,9 +1,12 @@
 /**
  * SUVIDHA 2026 - API Gateway
  * Centralized entry point for all microservices
+ * Now with Socket.io for real-time notifications
  */
 
 import express, { Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
+import { Server as SocketServer } from 'socket.io';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
@@ -15,6 +18,56 @@ import { authMiddleware } from './middleware/auth.js';
 import { requestLogger } from './middleware/requestLogger.js';
 
 const app = express();
+const httpServer = createServer(app);
+
+// =============================================================================
+// SOCKET.IO NOTIFICATION GATEWAY
+// =============================================================================
+
+const io = new SocketServer(httpServer, {
+    cors: {
+        origin: config.corsOrigins,
+        methods: ['GET', 'POST'],
+        credentials: true,
+    },
+});
+
+// Track connected clients
+let connectedClients = 0;
+
+io.on('connection', (socket) => {
+    connectedClients++;
+    logger.info(`📱 Client connected: ${socket.id} (Total: ${connectedClients})`);
+
+    // Send welcome message
+    socket.emit('notification', {
+        id: Date.now().toString(),
+        type: 'info',
+        message: 'Connected to SUVIDHA Notification Service',
+        timestamp: new Date().toISOString(),
+    });
+
+    socket.on('disconnect', () => {
+        connectedClients--;
+        logger.info(`📱 Client disconnected: ${socket.id} (Total: ${connectedClients})`);
+    });
+});
+
+// Broadcast function for use in routes
+const broadcastNotification = (notification: {
+    type: 'info' | 'warning' | 'alert' | 'success';
+    message: string;
+    priority?: number;
+}) => {
+    const payload = {
+        id: Date.now().toString(),
+        ...notification,
+        timestamp: new Date().toISOString(),
+    };
+    io.emit('notification', payload);
+    logger.info(`📢 Broadcast sent: ${notification.message}`);
+    return payload;
+};
 
 // =============================================================================
 // SECURITY MIDDLEWARE
@@ -71,6 +124,7 @@ app.get('/health', (_req: Request, res: Response) => {
         timestamp: new Date().toISOString(),
         service: 'api-gateway',
         version: '1.0.0',
+        connectedClients,
     });
 });
 
@@ -82,6 +136,43 @@ app.get('/api/health', (_req: Request, res: Response) => {
             billing: config.billingServiceUrl,
             grievance: config.grievanceServiceUrl,
         },
+        websocket: {
+            enabled: true,
+            connectedClients,
+        },
+    });
+});
+
+// =============================================================================
+// ADMIN NOTIFICATION BROADCAST ENDPOINT
+// =============================================================================
+
+app.post('/admin/broadcast', (req: Request, res: Response) => {
+    const { message, type = 'info', priority = 1 } = req.body;
+
+    if (!message) {
+        res.status(400).json({ error: 'Message is required' });
+        return;
+    }
+
+    const notification = broadcastNotification({
+        type: type as 'info' | 'warning' | 'alert' | 'success',
+        message,
+        priority,
+    });
+
+    res.status(200).json({
+        success: true,
+        notification,
+        recipients: connectedClients,
+    });
+});
+
+// Get connected clients count
+app.get('/admin/clients', (_req: Request, res: Response) => {
+    res.status(200).json({
+        connectedClients,
+        timestamp: new Date().toISOString(),
     });
 });
 
@@ -153,12 +244,15 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 const PORT = config.port;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     logger.info(`🚀 API Gateway running on port ${PORT}`);
+    logger.info(`🔌 WebSocket server enabled for real-time notifications`);
     logger.info(`📡 Environment: ${config.nodeEnv}`);
     logger.info(`🔗 Auth Service: ${config.authServiceUrl}`);
     logger.info(`🔗 Billing Service: ${config.billingServiceUrl}`);
     logger.info(`🔗 Grievance Service: ${config.grievanceServiceUrl}`);
 });
 
+export { io, broadcastNotification };
 export default app;
+
