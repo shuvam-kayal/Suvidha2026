@@ -11,19 +11,17 @@ A touch-based, multilingual Self-Service Kiosk interface for civic utility offic
 ```
 suvidha2026/
 ├── apps/
-│   ├── kiosk-ui/           # React 19 Touch Kiosk Interface
-│   ├── admin-portal/       # React Admin Dashboard
-│   └── api-gateway/        # Node.js/Express API Gateway
+│   ├── kiosk-ui/           # React Touch Kiosk Interface (port 5173)
+│   ├── admin-portal/       # React Admin Dashboard (port 5174)
+│   └── api-gateway/        # Node.js/Express API Gateway (port 3000)
 ├── services/
-│   ├── auth-service/       # Authentication (OTP/JWT)
-│   ├── billing-service/    # Bill Management & Payments
-│   └── grievance-service/  # Complaint Tracking
+│   ├── auth-service/       # OTP Authentication (port 3001)
+│   ├── billing-service/    # Bill Management (port 3002)
+│   └── grievance-service/  # Complaint Tracking (port 3003)
 ├── packages/
 │   └── types/              # Shared TypeScript Definitions
 ├── infrastructure/
-│   └── scripts/            # Database & Deploy Scripts
-├── docker-compose.yml      # Production Configuration
-├── docker-compose.dev.yml  # Development Overrides
+│   └── scripts/            # Database Init Scripts
 └── PLAN.md                 # Development Roadmap
 ```
 
@@ -32,161 +30,103 @@ suvidha2026/
 ## 🚀 Quick Start
 
 ### Prerequisites
-
 - Node.js 20+
-- Docker & Docker Compose
-- Git
+- npm or yarn
 
 ### Development Setup
 
-1. **Clone and install dependencies**:
-   ```powershell
-   git clone <repository-url>
-   cd suvidha2026
-   
-   # Install Kiosk UI
-   cd apps/kiosk-ui && npm install && cd ../..
-   
-   # Install API Gateway
-   cd apps/api-gateway && npm install && cd ../..
-   ```
-
-2. **Start infrastructure** (PostgreSQL + Redis):
-   ```powershell
-   docker-compose up postgres redis -d
-   ```
-
-3. **Run Kiosk UI** (development):
-   ```powershell
-   cd apps/kiosk-ui
-   npm run dev
-   # Opens at http://localhost:5173
-   ```
-
-4. **Run API Gateway**:
-   ```powershell
-   cd apps/api-gateway
-   npm run dev
-   # Runs at http://localhost:3000
-   ```
-
-### Full Stack (Docker)
-
 ```powershell
-# Build all services
-docker-compose build
+# 1. Install dependencies for each service
+cd apps/kiosk-ui && npm install && cd ../..
+cd apps/admin-portal && npm install && cd ../..
+cd services/auth-service && npm install && cd ../..
+cd services/billing-service && npm install && cd ../..
+cd services/grievance-service && npm install && cd ../..
 
-# Start entire stack
-docker-compose up -d
+# 2. Start backend services (each in separate terminal)
+cd services/auth-service && npm run dev      # Port 3001
+cd services/billing-service && npm run dev   # Port 3002
+cd services/grievance-service && npm run dev # Port 3003
 
-# View logs
-docker-compose logs -f
+# 3. Start Kiosk UI
+cd apps/kiosk-ui && npm run dev              # Port 5173
+
+# 4. Start Admin Portal
+cd apps/admin-portal && npm run dev          # Port 5174
 ```
 
-| Service | URL |
-|---------|-----|
-| Kiosk UI | http://localhost:8080 |
-| Admin Portal | http://localhost:8081 |
-| API Gateway | http://localhost:3000 |
-| PostgreSQL | localhost:5432 |
-| Redis | localhost:6379 |
+### Access URLs
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| Kiosk UI | http://localhost:5173 | Touch-optimized citizen interface |
+| Admin Portal | http://localhost:5174 | Dashboard for administrators |
+| Auth Service | http://localhost:3001 | OTP/JWT authentication |
+| Billing Service | http://localhost:3002 | Bill management & payments |
+| Grievance Service | http://localhost:3003 | Complaint tracking |
 
 ---
 
-## 🏛️ Architecture
+## ✅ Implemented Features
 
-```mermaid
-graph TB
-    subgraph Frontend
-        K[Kiosk UI :8080]
-        A[Admin Portal :8081]
-    end
-    
-    subgraph Gateway
-        G[API Gateway :3000]
-    end
-    
-    subgraph Microservices
-        AUTH[Auth Service :3001]
-        BILL[Billing Service :3002]
-        GRIEV[Grievance Service :3003]
-    end
-    
-    subgraph Infrastructure
-        PG[(PostgreSQL)]
-        RD[(Redis)]
-    end
-    
-    K --> G
-    A --> G
-    G --> AUTH
-    G --> BILL
-    G --> GRIEV
-    AUTH --> PG
-    AUTH --> RD
-    BILL --> PG
-    GRIEV --> PG
-```
+### Kiosk UI
+- **OTP Authentication** - Phone number login with simulated OTP
+- **Utility Bill Viewing** - List bills by utility type with status indicators
+- **Payment Flow** - Select payment method → Process → Receipt generation
+- **Grievance Filing** - Multi-step form with category selection
+- **Complaint Tracking** - Look up status by ticket number
+- **Multilingual** - English/Hindi toggle (i18next)
+- **Accessibility** - Skip links, ARIA labels, WCAG-compliant touch targets
+
+### Admin Portal
+- **Dashboard** - Statistics overview, grievance summary, activity feed
+- **Grievance Management** - Searchable table with filters
+- **Transaction History** - Payment records with export option
+
+### Backend Services
+- **Auth Service** - OTP generation, JWT tokens, Redis session storage
+- **Billing Service** - Mock bills, payment processing, receipts
+- **Grievance Service** - Complaint filing, ticket tracking, status updates
 
 ---
 
 ## 🔐 Security Features
 
-- **DPDP Act Compliance**: PII encryption at rest (AES-256)
-- **JWT Authentication**: Stateless token-based auth
-- **Rate Limiting**: DDoS protection on API Gateway
-- **Input Validation**: Zod schema validation on all endpoints
-- **Security Headers**: Helmet middleware for XSS/CSRF protection
-- **Audit Logging**: All transactions logged for compliance
+- **JWT Authentication** with refresh tokens
+- **OTP Rate Limiting** (5 attempts → 15-min lockout)
+- **Input Validation** with XSS sanitization
+- **Error Boundaries** for graceful failure handling
+- **WCAG 2.1 AA** accessibility compliance
 
 ---
 
-## 📱 Kiosk UI Features
+## 📱 Testing the Flow
 
-- **Touch-Optimized**: Minimum 48px touch targets (WCAG 2.1 AA)
-- **High Contrast**: Accessible color palette
-- **Multilingual**: English + Hindi (expandable)
-- **Responsive**: Works on various kiosk screen sizes
-
----
-
-## 📋 Development Phases
-
-See [PLAN.md](./PLAN.md) for detailed roadmap:
-
-1. ✅ **Scaffolding** - Project structure & Docker
-2. ⏳ **Core Authentication** - OTP/JWT implementation
-3. ⏳ **Billing Module** - Payment integration
-4. ⏳ **Grievance System** - Complaint management
-5. ⏳ **Multilingual Support** - i18n implementation
-6. ⏳ **Admin Dashboard** - Analytics & monitoring
-7. ⏳ **Security Hardening** - DPDP compliance
-8. ⏳ **Testing & QA** - E2E tests
-9. ⏳ **Final Polish** - Production readiness
+1. **Login**: Enter any 10-digit phone number → Click "Send OTP" → Copy OTP from console → Verify
+2. **Pay Bill**: Select utility → "Pay Bill" → Select a bill → "Pay Now" → Choose method → Complete
+3. **File Grievance**: Select utility → "File Grievance" → Follow steps → Get ticket number
+4. **Track Complaint**: Use ticket `GRV-260112-1234` to see sample status
 
 ---
 
-## 🧪 Testing
+## 📋 Development Status
 
-```powershell
-# Unit tests
-npm run test
+| Phase | Status |
+|-------|--------|
+| 1. Scaffolding | ✅ Complete |
+| 2. Authentication | ✅ Complete |
+| 3. Billing Module | ✅ Complete |
+| 4. Grievance System | ✅ Complete |
+| 5. Multilingual | ✅ Complete |
+| 6. Admin Dashboard | ✅ Complete |
+| 7. Security & Accessibility | ✅ Complete |
+| 8. Testing & QA | Pending |
+| 9. Production Deploy | Pending |
 
-# E2E tests (Kiosk UI)
-cd apps/kiosk-ui && npm run test:e2e
-```
+See [PLAN.md](./PLAN.md) for detailed roadmap.
 
 ---
 
 ## 📄 License
 
 Developed for C-DAC SUVIDHA Hackathon Challenge 2026.
-
----
-
-## 🤝 Contributing
-
-1. Follow the development phases in PLAN.md
-2. Ensure code passes linting (`npm run lint`)
-3. Write tests for new features
-4. Update documentation as needed

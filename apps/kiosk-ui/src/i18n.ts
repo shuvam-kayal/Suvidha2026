@@ -1,7 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-// Translation resources
+// Translation resources with regional language support
 const resources = {
     en: {
         translation: {
@@ -33,6 +33,7 @@ const resources = {
             'auth.sendOtp': 'Send OTP',
             'auth.verifyOtp': 'Verify OTP',
             'auth.resendOtp': 'Resend OTP',
+            'auth.biometric': 'Use Biometric',
 
             // Common
             'common.back': 'Back',
@@ -64,20 +65,18 @@ const resources = {
             'language.select': 'Select Language',
             'language.en': 'English',
             'language.hi': 'हिंदी',
+            'language.ta': 'தமிழ்',
+            'language.te': 'తెలుగు',
+            'language.kn': 'ಕನ್ನಡ',
         },
     },
     hi: {
         translation: {
-            // Header
             'app.title': 'सुविधा',
             'app.subtitle': 'नागरिक उपयोगिता कियोस्क',
-
-            // Welcome Screen
             'welcome.title': 'सुविधा में आपका स्वागत है',
             'welcome.subtitle': 'सभी उपयोगिता सेवाओं के लिए आपका एक-स्टॉप समाधान',
             'welcome.touchToStart': 'शुरू करने के लिए कहीं भी स्पर्श करें',
-
-            // Services
             'services.title': 'एक सेवा चुनें',
             'services.electricity': 'बिजली',
             'services.gas': 'गैस',
@@ -87,8 +86,6 @@ const resources = {
             'services.viewHistory': 'इतिहास देखें',
             'services.fileGrievance': 'शिकायत दर्ज करें',
             'services.trackGrievance': 'शिकायत ट्रैक करें',
-
-            // Authentication
             'auth.login': 'लॉगिन',
             'auth.logout': 'लॉगआउट',
             'auth.phoneNumber': 'फोन नंबर',
@@ -96,8 +93,7 @@ const resources = {
             'auth.sendOtp': 'OTP भेजें',
             'auth.verifyOtp': 'OTP सत्यापित करें',
             'auth.resendOtp': 'OTP पुनः भेजें',
-
-            // Common
+            'auth.biometric': 'बायोमेट्रिक का उपयोग करें',
             'common.back': 'वापस',
             'common.next': 'आगे',
             'common.cancel': 'रद्द करें',
@@ -107,41 +103,158 @@ const resources = {
             'common.loading': 'लोड हो रहा है...',
             'common.error': 'त्रुटि',
             'common.success': 'सफलता',
-
-            // Billing
             'billing.billDetails': 'बिल विवरण',
             'billing.amountDue': 'देय राशि',
             'billing.dueDate': 'देय तिथि',
             'billing.payNow': 'अभी भुगतान करें',
             'billing.paymentSuccess': 'भुगतान सफल',
             'billing.printReceipt': 'रसीद प्रिंट करें',
-
-            // Grievance
             'grievance.title': 'शिकायत दर्ज करें',
             'grievance.category': 'श्रेणी',
             'grievance.description': 'विवरण',
             'grievance.ticketNumber': 'टिकट नंबर',
             'grievance.status': 'स्थिति',
-
-            // Language
             'language.select': 'भाषा चुनें',
             'language.en': 'English',
             'language.hi': 'हिंदी',
+            'language.ta': 'தமிழ்',
+            'language.te': 'తెలుగు',
+            'language.kn': 'ಕನ್ನಡ',
+        },
+    },
+    ta: {
+        translation: {
+            'app.title': 'சுவிதா',
+            'app.subtitle': 'குடிமை பயன்பாட்டு கியோஸ்க்',
+            'welcome.title': 'சுவிதாவுக்கு வரவேற்கிறோம்',
+            'welcome.subtitle': 'அனைத்து பயன்பாட்டு சேவைகளுக்கும் உங்கள் ஒரே இடம்',
+            'welcome.touchToStart': 'தொடங்க எங்கும் தொடவும்',
+            'services.title': 'சேவையைத் தேர்ந்தெடுக்கவும்',
+            'services.electricity': 'மின்சாரம்',
+            'services.gas': 'எரிவாயு',
+            'services.water': 'தண்ணீர்',
+            'services.municipal': 'நகராட்சி',
+            'services.payBill': 'பில் செலுத்து',
+            'services.viewHistory': 'வரலாறு பார்',
+            'services.fileGrievance': 'புகார் அளி',
+            'services.trackGrievance': 'புகார் கண்காணி',
+            'auth.login': 'உள்நுழை',
+            'auth.logout': 'வெளியேறு',
+            'auth.phoneNumber': 'தொலைபேசி எண்',
+            'auth.sendOtp': 'OTP அனுப்பு',
+            'auth.verifyOtp': 'OTP சரிபார்',
+            'common.back': 'பின்',
+            'common.next': 'அடுத்து',
+            'common.cancel': 'ரத்து',
+            'common.submit': 'சமர்ப்பி',
+            'common.home': 'முகப்பு',
+            'common.loading': 'ஏற்றுகிறது...',
+            'billing.payNow': 'இப்போது செலுத்து',
+            'billing.paymentSuccess': 'பணம் வெற்றி',
+            'language.select': 'மொழி தேர்வு',
+            'language.en': 'English',
+            'language.hi': 'हिंदी',
+            'language.ta': 'தமிழ்',
+            'language.te': 'తెలుగు',
+            'language.kn': 'ಕನ್ನಡ',
+        },
+    },
+    te: {
+        translation: {
+            'app.title': 'సువిధా',
+            'app.subtitle': 'సివిక్ యుటిలిటీ కియోస్క్',
+            'welcome.title': 'సువిధాకు స్వాగతం',
+            'welcome.subtitle': 'అన్ని యుటిలిటీ సేవలకు మీ వన్-స్టాప్ సొల్యూషన్',
+            'welcome.touchToStart': 'ప్రారంభించడానికి ఎక్కడైనా టచ్ చేయండి',
+            'services.title': 'సేవను ఎంచుకోండి',
+            'services.electricity': 'విద్యుత్',
+            'services.gas': 'గ్యాస్',
+            'services.water': 'నీరు',
+            'services.municipal': 'మున్సిపల్',
+            'services.payBill': 'బిల్ చెల్లించు',
+            'services.viewHistory': 'చరిత్ర చూడు',
+            'services.fileGrievance': 'ఫిర్యాదు చేయి',
+            'services.trackGrievance': 'ఫిర్యాదు ట్రాక్',
+            'auth.login': 'లాగిన్',
+            'auth.logout': 'లాగ్అవుట్',
+            'auth.phoneNumber': 'ఫోన్ నంబర్',
+            'auth.sendOtp': 'OTP పంపు',
+            'auth.verifyOtp': 'OTP వెరిఫై',
+            'common.back': 'వెనక్కి',
+            'common.next': 'తదుపరి',
+            'common.cancel': 'రద్దు',
+            'common.submit': 'సబ్మిట్',
+            'common.home': 'హోమ్',
+            'common.loading': 'లోడ్ అవుతోంది...',
+            'billing.payNow': 'ఇప్పుడే చెల్లించు',
+            'billing.paymentSuccess': 'చెల్లింపు విజయవంతం',
+            'language.select': 'భాష ఎంచుకోండి',
+            'language.en': 'English',
+            'language.hi': 'हिंदी',
+            'language.ta': 'தமிழ்',
+            'language.te': 'తెలుగు',
+            'language.kn': 'ಕನ್ನಡ',
+        },
+    },
+    kn: {
+        translation: {
+            'app.title': 'ಸುವಿಧಾ',
+            'app.subtitle': 'ನಾಗರಿಕ ಉಪಯುಕ್ತತೆ ಕಿಯೋಸ್ಕ್',
+            'welcome.title': 'ಸುವಿಧಾಗೆ ಸ್ವಾಗತ',
+            'welcome.subtitle': 'ಎಲ್ಲಾ ಉಪಯುಕ್ತತೆ ಸೇವೆಗಳಿಗೆ ನಿಮ್ಮ ಏಕ-ನಿಲ್ದಾಣ ಪರಿಹಾರ',
+            'welcome.touchToStart': 'ಪ್ರಾರಂಭಿಸಲು ಎಲ್ಲಿಯಾದರೂ ಮುಟ್ಟಿ',
+            'services.title': 'ಸೇವೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+            'services.electricity': 'ವಿದ್ಯುತ್',
+            'services.gas': 'ಅನಿಲ',
+            'services.water': 'ನೀರು',
+            'services.municipal': 'ಮುನ್ಸಿಪಲ್',
+            'services.payBill': 'ಬಿಲ್ ಪಾವತಿಸಿ',
+            'services.viewHistory': 'ಇತಿಹಾಸ ನೋಡಿ',
+            'services.fileGrievance': 'ದೂರು ಸಲ್ಲಿಸಿ',
+            'services.trackGrievance': 'ದೂರು ಟ್ರಾಕ್',
+            'auth.login': 'ಲಾಗಿನ್',
+            'auth.logout': 'ಲಾಗ್ಔಟ್',
+            'auth.phoneNumber': 'ಫೋನ್ ಸಂಖ್ಯೆ',
+            'auth.sendOtp': 'OTP ಕಳುಹಿಸಿ',
+            'auth.verifyOtp': 'OTP ಪರಿಶೀಲಿಸಿ',
+            'common.back': 'ಹಿಂದೆ',
+            'common.next': 'ಮುಂದೆ',
+            'common.cancel': 'ರದ್ದುಮಾಡಿ',
+            'common.submit': 'ಸಲ್ಲಿಸಿ',
+            'common.home': 'ಮುಖಪುಟ',
+            'common.loading': 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...',
+            'billing.payNow': 'ಈಗ ಪಾವತಿಸಿ',
+            'billing.paymentSuccess': 'ಪಾವತಿ ಯಶಸ್ವಿ',
+            'language.select': 'ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ',
+            'language.en': 'English',
+            'language.hi': 'हिंदी',
+            'language.ta': 'தமிழ்',
+            'language.te': 'తెలుగు',
+            'language.kn': 'ಕನ್ನಡ',
         },
     },
 };
+
+// Available languages configuration
+export const supportedLanguages = [
+    { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
+    { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
+    { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
+    { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
+];
 
 i18n
     .use(initReactI18next)
     .init({
         resources,
-        lng: 'en', // Default language
+        lng: 'en',
         fallbackLng: 'en',
         interpolation: {
-            escapeValue: false, // React already escapes
+            escapeValue: false,
         },
         react: {
-            useSuspense: false, // Better for SSR compatibility
+            useSuspense: false,
         },
     });
 

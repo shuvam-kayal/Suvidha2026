@@ -1,6 +1,6 @@
 /**
  * Services Page - Utility-Specific Actions
- * Shows available actions for selected utility type
+ * Navigate to bills, payments, and grievances
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
@@ -30,11 +30,45 @@ const serviceColors: Record<string, string> = {
     municipal: 'text-emerald-400',
 };
 
-const actions = [
-    { id: 'pay-bill', icon: Receipt, translationKey: 'services.payBill' },
-    { id: 'history', icon: History, translationKey: 'services.viewHistory' },
-    { id: 'file-grievance', icon: AlertCircle, translationKey: 'services.fileGrievance' },
-    { id: 'track-grievance', icon: Search, translationKey: 'services.trackGrievance' },
+const serviceBgColors: Record<string, string> = {
+    electricity: 'bg-yellow-400/10',
+    gas: 'bg-orange-400/10',
+    water: 'bg-blue-400/10',
+    municipal: 'bg-emerald-400/10',
+};
+
+interface Action {
+    id: string;
+    icon: typeof Receipt;
+    translationKey: string;
+    route: (type: string) => string;
+}
+
+const actions: Action[] = [
+    {
+        id: 'pay-bill',
+        icon: Receipt,
+        translationKey: 'services.payBill',
+        route: (type) => `/bills/${type}`,
+    },
+    {
+        id: 'history',
+        icon: History,
+        translationKey: 'services.viewHistory',
+        route: (type) => `/bills/${type}?status=paid`,
+    },
+    {
+        id: 'file-grievance',
+        icon: AlertCircle,
+        translationKey: 'services.fileGrievance',
+        route: (type) => `/grievance/new?utility=${type}`,
+    },
+    {
+        id: 'track-grievance',
+        icon: Search,
+        translationKey: 'services.trackGrievance',
+        route: () => '/grievance/track',
+    },
 ];
 
 export default function ServicesPage() {
@@ -42,21 +76,24 @@ export default function ServicesPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
 
-    const ServiceIcon = serviceIcons[type || 'electricity'];
-    const serviceColor = serviceColors[type || 'electricity'];
+    const utilityType = type || 'electricity';
+    const ServiceIcon = serviceIcons[utilityType] || Zap;
+    const serviceColor = serviceColors[utilityType] || 'text-yellow-400';
+    const serviceBgColor = serviceBgColors[utilityType] || 'bg-yellow-400/10';
 
-    const handleAction = (actionId: string) => {
-        // TODO: Navigate to specific action pages
-        console.log(`Action: ${actionId} for ${type}`);
+    const handleAction = (action: Action) => {
+        navigate(action.route(utilityType));
     };
 
     return (
         <div className="max-w-4xl mx-auto animate-slide-up">
             {/* Service Header */}
             <div className="flex items-center justify-center gap-4 mb-10">
-                <ServiceIcon className={`w-12 h-12 ${serviceColor}`} />
+                <div className={`w-16 h-16 rounded-full ${serviceBgColor} flex items-center justify-center`}>
+                    <ServiceIcon className={`w-10 h-10 ${serviceColor}`} />
+                </div>
                 <h2 className="text-kiosk-2xl font-bold">
-                    {t(`services.${type}`)}
+                    {t(`services.${utilityType}`)}
                 </h2>
             </div>
 
@@ -65,8 +102,8 @@ export default function ServicesPage() {
                 {actions.map((action) => (
                     <button
                         key={action.id}
-                        onClick={() => handleAction(action.id)}
-                        className="service-tile"
+                        onClick={() => handleAction(action)}
+                        className="service-tile hover:border-primary-500"
                     >
                         <action.icon className="w-12 h-12 text-primary-400" />
                         <span className="text-kiosk-lg font-semibold">
