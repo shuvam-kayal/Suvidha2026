@@ -4,7 +4,7 @@ services:
   # =============================================================================
   # INFRASTRUCTURE
   # =============================================================================
-  
+
   postgres:
     image: postgres:16-alpine
     container_name: suvidha-postgres
@@ -20,7 +20,7 @@ services:
     networks:
       - suvidha-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-suvidha}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-suvidha}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,28 +36,29 @@ services:
     networks:
       - suvidha-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD:-redis_secure_2026}", "ping"]
+      test: [ "CMD", "redis-cli", "--pass", "${REDIS_PASSWORD:-redis_secure_2026}", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # =============================================================================
-  # API GATEWAY
+  # API GATEWAY (FastAPI + Python)
   # =============================================================================
-  
+
   api-gateway:
     build:
       context: ./apps/api-gateway
       dockerfile: Dockerfile
     container_name: suvidha-gateway
     environment:
-      NODE_ENV: production
-      PORT: 3000
+      ENVIRONMENT: production
+      PORT: "3000"
       AUTH_SERVICE_URL: http://auth-service:3001
       BILLING_SERVICE_URL: http://billing-service:3002
       GRIEVANCE_SERVICE_URL: http://grievance-service:3003
       JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_change_in_production}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2026}@redis:6379
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:8080,http://localhost:8081
     ports:
       - "3000:3000"
     depends_on:
@@ -68,17 +69,17 @@ services:
     restart: unless-stopped
 
   # =============================================================================
-  # MICROSERVICES
+  # MICROSERVICES (FastAPI + Python)
   # =============================================================================
-  
+
   auth-service:
     build:
       context: ./services/auth-service
       dockerfile: Dockerfile
     container_name: suvidha-auth
     environment:
-      NODE_ENV: production
-      PORT: 3001
+      ENVIRONMENT: production
+      PORT: "3001"
       DATABASE_URL: postgresql://${POSTGRES_USER:-suvidha}:${POSTGRES_PASSWORD:-suvidha_secure_2026}@postgres:5432/${POSTGRES_DB:-suvidha_db}
       JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_change_in_production}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2026}@redis:6379
@@ -97,8 +98,8 @@ services:
       dockerfile: Dockerfile
     container_name: suvidha-billing
     environment:
-      NODE_ENV: production
-      PORT: 3002
+      ENVIRONMENT: production
+      PORT: "3002"
       DATABASE_URL: postgresql://${POSTGRES_USER:-suvidha}:${POSTGRES_PASSWORD:-suvidha_secure_2026}@postgres:5432/${POSTGRES_DB:-suvidha_db}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2026}@redis:6379
     depends_on:
@@ -114,8 +115,8 @@ services:
       dockerfile: Dockerfile
     container_name: suvidha-grievance
     environment:
-      NODE_ENV: production
-      PORT: 3003
+      ENVIRONMENT: production
+      PORT: "3003"
       DATABASE_URL: postgresql://${POSTGRES_USER:-suvidha}:${POSTGRES_PASSWORD:-suvidha_secure_2026}@postgres:5432/${POSTGRES_DB:-suvidha_db}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2026}@redis:6379
     depends_on:
@@ -128,7 +129,7 @@ services:
   # =============================================================================
   # FRONTEND APPLICATIONS
   # =============================================================================
-  
+
   kiosk-ui:
     build:
       context: ./apps/kiosk-ui

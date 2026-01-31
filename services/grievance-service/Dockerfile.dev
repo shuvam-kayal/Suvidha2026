@@ -1,4 +1,4 @@
-# Python FastAPI Dockerfile for Auth Service
+# Development Dockerfile for Grievance Service
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 
 # Expose port
-EXPOSE 3001
+EXPOSE 3003
 
-# Run with uvicorn
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3001"]
+# Run with hot reload
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3003", "--reload"]

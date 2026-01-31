@@ -9,21 +9,20 @@ services:
       context: ./apps/api-gateway
       dockerfile: Dockerfile.dev
     environment:
-      NODE_ENV: development
+      ENVIRONMENT: development
     volumes:
-      - ./apps/api-gateway/src:/app/src:ro
+      - ./apps/api-gateway/app:/app/app:ro
     ports:
       - "3000:3000"
-      - "9229:9229"  # Node debugger
 
   auth-service:
     build:
       context: ./services/auth-service
       dockerfile: Dockerfile.dev
     environment:
-      NODE_ENV: development
+      ENVIRONMENT: development
     volumes:
-      - ./services/auth-service/src:/app/src:ro
+      - ./services/auth-service/app:/app/app:ro
     ports:
       - "3001:3001"
 
@@ -32,9 +31,9 @@ services:
       context: ./services/billing-service
       dockerfile: Dockerfile.dev
     environment:
-      NODE_ENV: development
+      ENVIRONMENT: development
     volumes:
-      - ./services/billing-service/src:/app/src:ro
+      - ./services/billing-service/app:/app/app:ro
     ports:
       - "3002:3002"
 
@@ -43,9 +42,9 @@ services:
       context: ./services/grievance-service
       dockerfile: Dockerfile.dev
     environment:
-      NODE_ENV: development
+      ENVIRONMENT: development
     volumes:
-      - ./services/grievance-service/src:/app/src:ro
+      - ./services/grievance-service/app:/app/app:ro
     ports:
       - "3003:3003"
 

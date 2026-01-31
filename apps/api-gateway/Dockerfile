@@ -1,34 +1,17 @@
-# Build stage
-FROM node:20-alpine AS builder
+# Python FastAPI Dockerfile for API Gateway
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY tsconfig.json ./
-COPY src ./src
+# Copy application
+COPY app/ ./app/
 
-RUN npm run build
-
-# Production stage
-FROM node:20-alpine AS production
-
-WORKDIR /app
-
-# Security: Run as non-root user
-RUN addgroup -g 1001 -S nodejs \
-    && adduser -S nodejs -u 1001
-
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
-
-COPY --from=builder /app/dist ./dist
-
-USER nodejs
-
+# Expose port
 EXPOSE 3000
 
-ENV NODE_ENV=production
-
-CMD ["node", "dist/index.js"]
+# Run with uvicorn
+CMD ["python", "-m", "uvicorn", "app.main:socket_app", "--host", "0.0.0.0", "--port", "3000"]

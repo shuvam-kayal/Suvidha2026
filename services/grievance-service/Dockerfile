@@ -1,18 +1,17 @@
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY tsconfig.json ./
-COPY src ./src
-RUN npm run build
+# Python FastAPI Dockerfile for Grievance Service
+FROM python:3.11-slim
 
-FROM node:20-alpine
 WORKDIR /app
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
-COPY --from=builder /app/dist ./dist
-USER nodejs
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY app/ ./app/
+
+# Expose port
 EXPOSE 3003
-ENV NODE_ENV=production
-CMD ["node", "dist/index.js"]
+
+# Run with uvicorn
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3003"]
