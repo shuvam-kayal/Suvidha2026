@@ -89,39 +89,55 @@ docker-compose logs postgres  # Check for "ready to accept connections"
 #### Step 2: Install Python Dependencies
 ```bash
 # Create virtual environment (optional but recommended)
+cd services
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install all backend dependencies
-pip install fastapi uvicorn pydantic-settings pyjwt redis python-socketio httpx sqlalchemy[asyncio] asyncpg
+pip install -r requirements.txt
+
+#Now go back and move to apps folder
+cd ..
+cd apps
+python -m venv venv
+
+# Install all backend dependencies
+pip install -r requirements.txt
 ```
 
 #### Step 3: Start Backend Services (4 terminals)
 
 **Terminal 1 - Auth Service:**
 ```bash
-cd services/auth-service
+cd services
+venv\Scripts\activate
+cd auth-service
 set DATABASE_URL=postgresql+asyncpg://suvidha:suvidha_secure_2026@localhost:5432/suvidha_db
 uvicorn app.main:app --port 3001 --reload
 ```
 
 **Terminal 2 - Billing Service:**
 ```bash
-cd services/billing-service
+cd services
+venv\Scripts\activate
+cd billing-service
 set DATABASE_URL=postgresql+asyncpg://suvidha:suvidha_secure_2026@localhost:5432/suvidha_db
 uvicorn app.main:app --port 3002 --reload
 ```
 
 **Terminal 3 - Grievance Service:**
 ```bash
-cd services/grievance-service
+cd services
+venv\Scripts\activate
+cd grievance-service
 set DATABASE_URL=postgresql+asyncpg://suvidha:suvidha_secure_2026@localhost:5432/suvidha_db
 uvicorn app.main:app --port 3003 --reload
 ```
 
 **Terminal 4 - API Gateway:**
 ```bash
-cd apps/api-gateway
+cd apps
+venv\Scripts\activate
+cd api-gateway
 uvicorn app.main:socket_app --port 3000 --reload
 ```
 
