@@ -116,6 +116,22 @@ CREATE INDEX idx_complaints_status ON grievance.complaints(status);
 CREATE INDEX idx_complaints_ticket ON grievance.complaints(ticket_number);
 CREATE INDEX idx_complaint_updates_complaint_id ON grievance.complaint_updates(complaint_id);
 
+-- Service Requests (New Connections, Address Changes, Bulk Waste)
+CREATE TABLE IF NOT EXISTS grievance.service_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    request_number VARCHAR(20) UNIQUE NOT NULL,
+    user_id UUID NOT NULL,
+    request_type VARCHAR(20) NOT NULL CHECK (request_type IN ('NEW_CONNECTION', 'ADDRESS_CHANGE', 'BULK_WASTE')),
+    utility_type VARCHAR(20) NOT NULL CHECK (utility_type IN ('ELECTRICITY', 'GAS', 'WATER', 'MUNICIPAL')),
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'REJECTED')),
+    form_data JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_service_requests_user_id ON grievance.service_requests(user_id);
+CREATE INDEX idx_service_requests_status ON grievance.service_requests(status);
+
 -- =============================================================================
 -- AUDIT LOG (Security Compliance)
 -- =============================================================================

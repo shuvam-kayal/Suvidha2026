@@ -1,20 +1,30 @@
 """
-Grievance Service - Complaint Management
+Grievance Service - Complaint & Service Request Management
 SUVIDHA 2026 - C-DAC Hackathon
+
+Database-backed grievance service with PostgreSQL persistence.
 """
 
 import os
-import time
-import random
+import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from .models import (
-    Complaint, ComplaintSummary, ComplaintUpdate, ComplaintStatus, ComplaintPriority,
+    ComplaintStatus, ComplaintPriority,
     UtilityType, CreateComplaint, UpdateStatus, AddUpdate, CATEGORIES
+)
+from .db import (
+    init_db, close_db, get_db_context,
+    get_all_complaints, get_complaint_by_id, get_complaint_by_ticket,
+    create_complaint, update_complaint_status, add_complaint_update,
+    get_all_service_requests, get_service_request_by_id, create_service_request,
+    Complaint, ComplaintUpdate, ServiceRequest,
 )
 
 
@@ -26,50 +36,27 @@ PORT = int(os.getenv("PORT", "3003"))
 
 
 # =============================================================================
-# HELPER FUNCTIONS
+# REQUEST MODELS
 # =============================================================================
 
-def generate_ticket_number() -> str:
-    """Generate a unique ticket number."""
-    prefix = "GRV"
-    date_part = datetime.utcnow().strftime("%y%m%d")
-    random_part = random.randint(1000, 9999)
-    return f"{prefix}-{date_part}-{random_part}"
+class CreateServiceRequest(BaseModel):
+    requestType: str  # NEW_CONNECTION, ADDRESS_CHANGE, BULK_WASTE
+    utilityType: str
+    formData: dict
 
 
 # =============================================================================
-# MOCK DATA
+# LIFESPAN
 # =============================================================================
 
-complaints: List[Complaint] = [
-    Complaint(
-        id="comp_001",
-        ticketNumber="GRV-260112-1234",
-        userId="user_1234",
-        utilityType=UtilityType.ELECTRICITY,
-        category="Power Outage",
-        subject="Frequent power cuts in area",
-        description="There have been frequent power cuts in our area for the past week. Power goes off 5-6 times daily for 30 minutes each.",
-        status=ComplaintStatus.IN_PROGRESS,
-        priority=ComplaintPriority.HIGH,
-        createdAt="2026-01-12T08:30:00Z",
-        updatedAt="2026-01-13T14:00:00Z",
-        updates=[
-            ComplaintUpdate(
-                id="upd_001",
-                message="Complaint received. Assigned to field team for investigation.",
-                createdBy="System",
-                createdAt="2026-01-12T09:00:00Z",
-            ),
-            ComplaintUpdate(
-                id="upd_002",
-                message="Field team identified faulty transformer. Repair work scheduled.",
-                createdBy="Field Engineer",
-                createdAt="2026-01-13T14:00:00Z",
-            ),
-        ],
-    ),
-]
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler."""
+    print(f"\n📋 Grievance Service starting on port {PORT}")
+    await init_db()
+    yield
+    await close_db()
+    print("Grievance Service stopped")
 
 
 # =============================================================================
@@ -78,8 +65,9 @@ complaints: List[Complaint] = [
 
 app = FastAPI(
     title="SUVIDHA Grievance Service",
-    description="Complaint Management System",
+    description="Complaint & Service Request Management System",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS
@@ -100,12 +88,6 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.on_event("startup")
-async def startup():
-    print(f"\n📋 Grievance Service running on port {PORT}")
-    print(f"📊 Mock complaints loaded: {len(complaints)}")
-
-
 # =============================================================================
 # HEALTH CHECK
 # =============================================================================
@@ -113,10 +95,85 @@ async def startup():
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+    db_status = "disconnected"
+    try:
+        from .db import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        db_status = "error"
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if db_status == "connected" else "degraded",
         "service": "grievance-service",
+        "database": db_status,
         "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def complaint_to_summary(c: Complaint) -> dict:
+    """Convert Complaint model to summary dict."""
+    return {
+        "id": str(c.id),
+        "ticketNumber": c.ticket_number,
+        "utilityType": c.utility_type,
+        "category": c.category,
+        "subject": c.subject,
+        "status": c.status,
+        "priority": c.priority,
+        "createdAt": c.created_at.isoformat() if c.created_at else None,
+        "updatedAt": c.updated_at.isoformat() if c.updated_at else None,
+    }
+
+
+def complaint_to_detail(c: Complaint) -> dict:
+    """Convert Complaint model to detailed dict."""
+    return {
+        "id": str(c.id),
+        "ticketNumber": c.ticket_number,
+        "userId": str(c.user_id),
+        "utilityType": c.utility_type,
+        "category": c.category,
+        "subject": c.subject,
+        "description": c.description,
+        "status": c.status,
+        "priority": c.priority,
+        "assignedTo": str(c.assigned_to) if c.assigned_to else None,
+        "resolutionNotes": c.resolution_notes,
+        "createdAt": c.created_at.isoformat() if c.created_at else None,
+        "updatedAt": c.updated_at.isoformat() if c.updated_at else None,
+        "resolvedAt": c.resolved_at.isoformat() if c.resolved_at else None,
+        "updates": [
+            {
+                "id": str(u.id),
+                "message": u.message,
+                "createdBy": str(u.created_by) if u.created_by else "System",
+                "createdAt": u.created_at.isoformat() if u.created_at else None,
+            }
+            for u in (c.updates or [])
+        ],
+    }
+
+
+def service_request_to_dict(sr: ServiceRequest) -> dict:
+    """Convert ServiceRequest model to dict."""
+    return {
+        "id": str(sr.id),
+        "requestNumber": sr.request_number,
+        "userId": str(sr.user_id),
+        "requestType": sr.request_type,
+        "utilityType": sr.utility_type,
+        "status": sr.status,
+        "formData": sr.form_data,
+        "createdAt": sr.created_at.isoformat() if sr.created_at else None,
+        "updatedAt": sr.updated_at.isoformat() if sr.updated_at else None,
     }
 
 
@@ -149,13 +206,11 @@ async def get_categories(utility: Optional[str] = Query(None)):
 # =============================================================================
 
 @app.post("/complaints", status_code=201)
-async def create_complaint(
+async def create_complaint_endpoint(
     data: CreateComplaint,
     x_user_id: Optional[str] = Header(None, alias="x-user-id"),
 ):
     """File a new complaint."""
-    user_id = x_user_id or "anonymous"
-    
     # Validation
     if not data.utilityType or not data.category or not data.subject or not data.description:
         raise HTTPException(
@@ -175,46 +230,35 @@ async def create_complaint(
             }
         )
     
-    ticket_number = generate_ticket_number()
-    now = datetime.utcnow().isoformat() + "Z"
+    # Parse user ID
+    try:
+        user_id = uuid.UUID(x_user_id) if x_user_id else uuid.uuid4()
+    except ValueError:
+        user_id = uuid.uuid4()
     
-    new_complaint = Complaint(
-        id=f"comp_{int(time.time())}",
-        ticketNumber=ticket_number,
-        userId=user_id,
-        utilityType=UtilityType(data.utilityType.upper()),
-        category=data.category,
-        subject=data.subject,
-        description=data.description,
-        status=ComplaintStatus.OPEN,
-        priority=ComplaintPriority.MEDIUM,
-        createdAt=now,
-        updatedAt=now,
-        updates=[
-            ComplaintUpdate(
-                id=f"upd_{int(time.time())}",
-                message="Complaint registered successfully. Our team will review your complaint shortly.",
-                createdBy="System",
-                createdAt=now,
-            )
-        ],
-    )
-    
-    complaints.append(new_complaint)
-    
-    print(f"📋 New complaint registered: {ticket_number}")
-    
-    return {
-        "success": True,
-        "ticketNumber": ticket_number,
-        "message": "Complaint registered successfully",
-        "complaint": {
-            "id": new_complaint.id,
-            "ticketNumber": new_complaint.ticketNumber,
-            "status": new_complaint.status.value,
-            "createdAt": new_complaint.createdAt,
-        },
-    }
+    async with get_db_context() as db:
+        complaint = await create_complaint(
+            db=db,
+            user_id=user_id,
+            utility_type=data.utilityType,
+            category=data.category,
+            subject=data.subject,
+            description=data.description,
+        )
+        
+        print(f"📋 New complaint registered: {complaint.ticket_number}")
+        
+        return {
+            "success": True,
+            "ticketNumber": complaint.ticket_number,
+            "message": "Complaint registered successfully",
+            "complaint": {
+                "id": str(complaint.id),
+                "ticketNumber": complaint.ticket_number,
+                "status": complaint.status,
+                "createdAt": complaint.created_at.isoformat() if complaint.created_at else None,
+            },
+        }
 
 
 # =============================================================================
@@ -228,35 +272,13 @@ async def get_complaints(
     x_user_id: Optional[str] = Header(None, alias="x-user-id"),
 ):
     """Get list of complaints."""
-    filtered = list(complaints)
-    
-    if status:
-        filtered = [c for c in filtered if c.status.value == status.upper()]
-    
-    if utility:
-        filtered = [c for c in filtered if c.utilityType.value == utility.upper()]
-    
-    # Sort by most recent
-    filtered.sort(key=lambda c: c.createdAt, reverse=True)
-    
-    summaries = [
-        ComplaintSummary(
-            id=c.id,
-            ticketNumber=c.ticketNumber,
-            utilityType=c.utilityType,
-            category=c.category,
-            subject=c.subject,
-            status=c.status,
-            priority=c.priority,
-            createdAt=c.createdAt,
-            updatedAt=c.updatedAt,
-        )
-        for c in filtered
-    ]
+    async with get_db_context() as db:
+        complaints = await get_all_complaints(db, status=status, utility=utility)
+        summaries = [complaint_to_summary(c) for c in complaints]
     
     return {
         "success": True,
-        "complaints": [s.model_dump() for s in summaries],
+        "complaints": summaries,
         "total": len(summaries),
     }
 
@@ -268,24 +290,22 @@ async def get_complaints(
 @app.get("/complaints/track/{ticket_number}")
 async def track_complaint(ticket_number: str):
     """Track complaint by ticket number."""
-    complaint = next(
-        (c for c in complaints if c.ticketNumber.upper() == ticket_number.upper()),
-        None
-    )
-    
-    if not complaint:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": "Complaint not found",
-                "message": "No complaint found with this ticket number",
-            }
-        )
-    
-    return {
-        "success": True,
-        "complaint": complaint.model_dump(),
-    }
+    async with get_db_context() as db:
+        complaint = await get_complaint_by_ticket(db, ticket_number)
+        
+        if not complaint:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "Complaint not found",
+                    "message": "No complaint found with this ticket number",
+                }
+            )
+        
+        return {
+            "success": True,
+            "complaint": complaint_to_detail(complaint),
+        }
 
 
 # =============================================================================
@@ -295,15 +315,21 @@ async def track_complaint(ticket_number: str):
 @app.get("/complaints/{complaint_id}")
 async def get_complaint(complaint_id: str):
     """Get complaint details by ID."""
-    complaint = next((c for c in complaints if c.id == complaint_id), None)
+    try:
+        complaint_uuid = uuid.UUID(complaint_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail={"error": "Invalid complaint ID format"})
     
-    if not complaint:
-        raise HTTPException(status_code=404, detail={"error": "Complaint not found"})
-    
-    return {
-        "success": True,
-        "complaint": complaint.model_dump(),
-    }
+    async with get_db_context() as db:
+        complaint = await get_complaint_by_id(db, complaint_uuid)
+        
+        if not complaint:
+            raise HTTPException(status_code=404, detail={"error": "Complaint not found"})
+        
+        return {
+            "success": True,
+            "complaint": complaint_to_detail(complaint),
+        }
 
 
 # =============================================================================
@@ -311,7 +337,7 @@ async def get_complaint(complaint_id: str):
 # =============================================================================
 
 @app.patch("/complaints/{complaint_id}/status")
-async def update_complaint_status(
+async def update_complaint_status_endpoint(
     complaint_id: str,
     data: UpdateStatus,
     x_admin_id: Optional[str] = Header(None, alias="x-admin-id"),
@@ -319,54 +345,52 @@ async def update_complaint_status(
     """Update complaint status (admin only)."""
     admin_id = x_admin_id or "admin"
     
-    complaint = next((c for c in complaints if c.id == complaint_id), None)
+    try:
+        complaint_uuid = uuid.UUID(complaint_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail={"error": "Invalid complaint ID format"})
     
-    if not complaint:
-        raise HTTPException(status_code=404, detail={"error": "Complaint not found"})
-    
-    valid_statuses = [s.value for s in ComplaintStatus]
-    if data.status and data.status.upper() not in valid_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "Invalid status",
-                "validStatuses": valid_statuses,
-            }
-        )
-    
-    now = datetime.utcnow().isoformat() + "Z"
-    
-    if data.status:
-        complaint.status = ComplaintStatus(data.status.upper())
-        complaint.updatedAt = now
+    async with get_db_context() as db:
+        complaint = await get_complaint_by_id(db, complaint_uuid)
         
-        if complaint.status == ComplaintStatus.RESOLVED:
-            complaint.resolvedAt = now
-    
-    # Add update to history
-    if data.message:
-        complaint.updates.append(
-            ComplaintUpdate(
-                id=f"upd_{int(time.time())}",
-                message=data.message,
-                createdBy=data.resolvedBy or admin_id,
-                createdAt=now,
+        if not complaint:
+            raise HTTPException(status_code=404, detail={"error": "Complaint not found"})
+        
+        valid_statuses = [s.value for s in ComplaintStatus]
+        if data.status and data.status.upper() not in valid_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Invalid status",
+                    "validStatuses": valid_statuses,
+                }
             )
-        )
-    
-    print(f"✅ Complaint {complaint.ticketNumber} updated to {complaint.status.value} by {admin_id}")
-    
-    return {
-        "success": True,
-        "message": "Complaint updated successfully",
-        "complaint": {
-            "id": complaint.id,
-            "ticketNumber": complaint.ticketNumber,
-            "status": complaint.status.value,
-            "updatedAt": complaint.updatedAt,
-            "resolvedAt": complaint.resolvedAt,
-        },
-    }
+        
+        if data.status:
+            await update_complaint_status(
+                db=db,
+                complaint=complaint,
+                status=data.status,
+                message=data.message,
+                resolved_by=data.resolvedBy,
+            )
+        
+        # Reload complaint
+        complaint = await get_complaint_by_id(db, complaint_uuid)
+        
+        print(f"✅ Complaint {complaint.ticket_number} updated to {complaint.status} by {admin_id}")
+        
+        return {
+            "success": True,
+            "message": "Complaint updated successfully",
+            "complaint": {
+                "id": str(complaint.id),
+                "ticketNumber": complaint.ticket_number,
+                "status": complaint.status,
+                "updatedAt": complaint.updated_at.isoformat() if complaint.updated_at else None,
+                "resolvedAt": complaint.resolved_at.isoformat() if complaint.resolved_at else None,
+            },
+        }
 
 
 # =============================================================================
@@ -374,7 +398,7 @@ async def update_complaint_status(
 # =============================================================================
 
 @app.post("/complaints/{complaint_id}/updates")
-async def add_complaint_update(
+async def add_complaint_update_endpoint(
     complaint_id: str,
     data: AddUpdate,
     x_admin_id: Optional[str] = Header(None, alias="x-admin-id"),
@@ -382,35 +406,124 @@ async def add_complaint_update(
     """Add update to complaint (admin only)."""
     admin_id = x_admin_id or "admin"
     
-    complaint = next((c for c in complaints if c.id == complaint_id), None)
+    try:
+        complaint_uuid = uuid.UUID(complaint_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail={"error": "Invalid complaint ID format"})
     
-    if not complaint:
-        raise HTTPException(status_code=404, detail={"error": "Complaint not found"})
-    
-    if not data.message or len(data.message.strip()) < 5:
+    async with get_db_context() as db:
+        complaint = await get_complaint_by_id(db, complaint_uuid)
+        
+        if not complaint:
+            raise HTTPException(status_code=404, detail={"error": "Complaint not found"})
+        
+        if not data.message or len(data.message.strip()) < 5:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "Message must be at least 5 characters"}
+            )
+        
+        update_record = await add_complaint_update(
+            db=db,
+            complaint=complaint,
+            message=data.message.strip(),
+            admin_id=admin_id,
+        )
+        
+        print(f"💬 Update added to {complaint.ticket_number} by {admin_id}")
+        
+        return {
+            "success": True,
+            "update": {
+                "id": str(update_record.id),
+                "message": update_record.message,
+                "createdBy": admin_id,
+                "createdAt": update_record.created_at.isoformat() if update_record.created_at else None,
+            },
+        }
+
+
+# =============================================================================
+# SERVICE REQUESTS - NEW CONNECTION, ADDRESS CHANGE, BULK WASTE
+# =============================================================================
+
+@app.post("/service-requests", status_code=201)
+async def create_service_request_endpoint(
+    data: CreateServiceRequest,
+    x_user_id: Optional[str] = Header(None, alias="x-user-id"),
+):
+    """Create a new service request (new connection, address change, bulk waste)."""
+    valid_types = ["NEW_CONNECTION", "ADDRESS_CHANGE", "BULK_WASTE"]
+    if data.requestType.upper() not in valid_types:
         raise HTTPException(
             status_code=400,
-            detail={"error": "Message must be at least 5 characters"}
+            detail={
+                "error": "Invalid request type",
+                "validTypes": valid_types,
+            }
         )
     
-    now = datetime.utcnow().isoformat() + "Z"
+    # Parse user ID
+    try:
+        user_id = uuid.UUID(x_user_id) if x_user_id else uuid.uuid4()
+    except ValueError:
+        user_id = uuid.uuid4()
     
-    update = ComplaintUpdate(
-        id=f"upd_{int(time.time())}",
-        message=data.message.strip(),
-        createdBy=admin_id,
-        createdAt=now,
-    )
-    
-    complaint.updates.append(update)
-    complaint.updatedAt = now
-    
-    print(f"💬 Update added to {complaint.ticketNumber} by {admin_id}")
+    async with get_db_context() as db:
+        request = await create_service_request(
+            db=db,
+            user_id=user_id,
+            request_type=data.requestType,
+            utility_type=data.utilityType,
+            form_data=data.formData,
+        )
+        
+        print(f"📝 New service request: {request.request_number} ({request.request_type})")
+        
+        return {
+            "success": True,
+            "requestNumber": request.request_number,
+            "message": f"Service request submitted successfully",
+            "request": service_request_to_dict(request),
+        }
+
+
+@app.get("/service-requests")
+async def get_service_requests(
+    type: Optional[str] = Query(None, description="Filter by request type"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    x_user_id: Optional[str] = Header(None, alias="x-user-id"),
+):
+    """Get list of service requests."""
+    async with get_db_context() as db:
+        requests = await get_all_service_requests(db, request_type=type, status=status)
+        request_list = [service_request_to_dict(r) for r in requests]
     
     return {
         "success": True,
-        "update": update.model_dump(),
+        "requests": request_list,
+        "total": len(request_list),
     }
+
+
+@app.get("/service-requests/{request_id}")
+async def get_service_request(request_id: str):
+    """Get service request details by ID."""
+    try:
+        request_uuid = uuid.UUID(request_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail={"error": "Invalid request ID format"})
+    
+    async with get_db_context() as db:
+        request = await get_service_request_by_id(db, request_uuid)
+        
+        if not request:
+            raise HTTPException(status_code=404, detail={"error": "Service request not found"})
+        
+        return {
+            "success": True,
+            "request": service_request_to_dict(request),
+        }
 
 
 # =============================================================================

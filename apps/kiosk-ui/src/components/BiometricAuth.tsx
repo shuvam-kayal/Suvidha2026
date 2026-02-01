@@ -78,16 +78,34 @@ export default function BiometricAuth({
             {/* Biometric Icon with Animation */}
             <div
                 className={`
-          relative w-48 h-48 rounded-full flex items-center justify-center
+          relative w-48 h-48 rounded-full flex items-center justify-center overflow-hidden
           transition-all duration-300
           ${status === 'idle' ? 'bg-primary-500/20' : ''}
-          ${status === 'scanning' ? 'bg-blue-500/20 animate-pulse' : ''}
+          ${status === 'scanning' ? 'bg-blue-500/20' : ''}
           ${status === 'success' ? 'bg-green-500/20' : ''}
           ${status === 'failed' ? 'bg-red-500/20' : ''}
         `}
                 role="status"
                 aria-live="polite"
             >
+                {/* Scanning Line Animation */}
+                {status === 'scanning' && (
+                    <div
+                        className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent"
+                        style={{
+                            animation: 'scan-line 1.5s ease-in-out infinite',
+                        }}
+                    />
+                )}
+
+                {/* Pulse rings during scanning */}
+                {status === 'scanning' && (
+                    <>
+                        <div className="absolute inset-0 rounded-full border-2 border-blue-400/30 animate-ping" />
+                        <div className="absolute inset-4 rounded-full border border-blue-400/20 animate-pulse" />
+                    </>
+                )}
+
                 {/* Progress Ring */}
                 {status === 'scanning' && (
                     <svg

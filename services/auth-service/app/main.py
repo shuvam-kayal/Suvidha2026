@@ -23,6 +23,14 @@ from .redis_client import (
     invalidate_session,
 )
 from .jwt_utils import generate_token_pair, verify_token, hash_token, generate_otp
+from .db import (
+    init_db,
+    close_db,
+    get_db,
+    get_or_create_user,
+    get_user_by_phone,
+    User,
+)
 
 
 # =============================================================================
@@ -63,10 +71,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"❌ Redis connection error: {e}")
     
+    # Test Database connection
+    await init_db()
+    
     yield
     
     # Shutdown
     await close_redis_client()
+    await close_db()
     print("Auth Service stopped")
 
 
@@ -107,6 +119,8 @@ async def log_requests(request: Request, call_next):
 async def health_check():
     """Health check endpoint."""
     redis_status = "disconnected"
+    db_status = "disconnected"
+    
     try:
         client = await get_redis_client()
         await client.ping()
@@ -114,10 +128,21 @@ async def health_check():
     except Exception:
         redis_status = "error"
     
+    try:
+        from .db import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        db_status = "error"
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if redis_status == "connected" and db_status == "connected" else "degraded",
         "service": "auth-service",
         "redis": redis_status,
+        "database": db_status,
         "timestamp": datetime.utcnow().isoformat(),
     }
 
@@ -217,9 +242,15 @@ async def verify_otp_endpoint(data: OtpVerify):
             }
         )
     
-    # Generate user ID (in production, this would come from database)
-    import time
-    user_id = f"user_{phone_number[-4:]}_{hex(int(time.time()))[2:]}"
+    # Get or create user in database
+    from .db import get_session_factory
+    factory = get_session_factory()
+    async with factory() as db:
+        user, is_new_user = await get_or_create_user(db, phone_number)
+        await db.commit()
+        user_id = str(user.id)
+        user_name = user.full_name
+        user_email = user.email
     
     # Generate JWT tokens
     tokens = generate_token_pair(user_id, phone_number)
@@ -237,9 +268,9 @@ async def verify_otp_endpoint(data: OtpVerify):
         "user": {
             "id": user_id,
             "phoneNumber": phone_number,
-            "name": None,
-            "email": None,
-            "isNewUser": True,
+            "name": user_name,
+            "email": user_email,
+            "isNewUser": is_new_user,
         },
     }
 

@@ -5,7 +5,7 @@
 
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Zap, Flame, Droplets, Building2, LogOut, User, Check } from 'lucide-react';
+import { Zap, Flame, Droplets, Building2, LogOut, User, Check, Plus, Truck } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useServiceStore, ServiceType } from '../stores/serviceStore';
 import { logout } from '../lib/api';
@@ -176,6 +176,15 @@ export default function DashboardPage() {
                 >
                     {t('services.trackGrievance')}
                 </button>
+                {isAuthenticated && (
+                    <button
+                        className="btn-outline flex items-center gap-2"
+                        onClick={() => navigate('/service-request')}
+                    >
+                        <Plus className="w-4 h-4" />
+                        {t('services.newConnection', 'New Connection')}
+                    </button>
+                )}
                 {activeService && (
                     <button
                         className="btn-outline"
@@ -196,4 +205,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-

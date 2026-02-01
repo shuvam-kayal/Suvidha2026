@@ -184,6 +184,66 @@ async def api_health():
 
 
 # =============================================================================
+# EMERGENCY ALERTS ENDPOINT (Phase 2 Feature)
+# =============================================================================
+
+@app.get("/api/v1/alerts")
+async def get_alerts():
+    """Get active emergency alerts for kiosk ticker display."""
+    # In production, these would come from a database or admin panel
+    # For hackathon demo, returning static alerts that simulate real scenarios
+    alerts = [
+        {
+            "id": "alert-001",
+            "type": "warning",
+            "category": "WEATHER",
+            "message": "Heavy Rain Alert: Possible power disruptions in low-lying areas",
+            "severity": "medium",
+            "active": True,
+            "validFrom": "2026-02-01T00:00:00Z",
+            "validUntil": "2026-02-03T23:59:59Z",
+        },
+        {
+            "id": "alert-002",
+            "type": "info",
+            "category": "MAINTENANCE",
+            "message": "Scheduled maintenance: Sector 4-7 water supply interrupted on Feb 5, 10AM-4PM",
+            "severity": "low",
+            "active": True,
+            "validFrom": "2026-02-05T10:00:00Z",
+            "validUntil": "2026-02-05T16:00:00Z",
+        },
+        {
+            "id": "alert-003",
+            "type": "success",
+            "category": "SERVICE",
+            "message": "New: Online grievance tracking now available 24/7",
+            "severity": "low",
+            "active": True,
+            "validFrom": "2026-01-15T00:00:00Z",
+            "validUntil": "2026-12-31T23:59:59Z",
+        },
+        {
+            "id": "alert-004",
+            "type": "info",
+            "category": "ANNOUNCEMENT",
+            "message": "Electricity bill payment deadline extended to Feb 10 for all domestic consumers",
+            "severity": "medium",
+            "active": True,
+            "validFrom": "2026-02-01T00:00:00Z",
+            "validUntil": "2026-02-10T23:59:59Z",
+        },
+    ]
+    
+    return {
+        "success": True,
+        "alerts": alerts,
+        "total": len(alerts),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+# =============================================================================
 # ADMIN NOTIFICATION ENDPOINTS
 # =============================================================================
 

@@ -1,6 +1,6 @@
 /**
  * Bill Details Page - View and Pay Bill
- * Shows full bill breakdown with payment option
+ * Shows full bill breakdown with payment option and receipt download
  */
 
 import { useState, useEffect } from 'react';
@@ -9,9 +9,11 @@ import { useTranslation } from 'react-i18next';
 import {
     Zap, Flame, Droplets, Building2,
     AlertCircle, CheckCircle, CreditCard,
-    Receipt, ArrowLeft, RefreshCw
+    Receipt, ArrowLeft, RefreshCw, Download, Printer
 } from 'lucide-react';
 import api from '../lib/api';
+import PrintReceiptModal from '../components/PrintReceiptModal';
+import { useAuthStore } from '../stores/authStore';
 
 interface BillDetails {
     id: string;
@@ -28,6 +30,7 @@ interface BillDetails {
         fixedCharges: number;
         taxes: number;
     };
+    accountNumber?: string;
 }
 
 const utilityIcons: Record<string, typeof Zap> = {
@@ -48,10 +51,12 @@ export default function BillDetailsPage() {
     const { billId } = useParams<{ billId: string }>();
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const { user } = useAuthStore();
 
     const [bill, setBill] = useState<BillDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showReceiptModal, setShowReceiptModal] = useState(false);
 
     useEffect(() => {
         const fetchBill = async () => {
@@ -116,6 +121,24 @@ export default function BillDetailsPage() {
     const remainingAmount = bill.amountDue - bill.amountPaid;
     const isPaid = bill.status === 'PAID';
 
+    // Prepare receipt data for PrintReceiptModal
+    const receiptData = {
+        transactionId: `TXN${bill.billNumber.replace(/[^0-9]/g, '')}${Date.now().toString().slice(-4)}`,
+        amount: bill.amountPaid || bill.amountDue,
+        serviceType: bill.utilityType,
+        consumerNumber: bill.accountNumber || bill.billNumber,
+        consumerName: user?.name || 'Citizen',
+        billNumber: bill.billNumber,
+        paymentDate: new Date().toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        }),
+        paymentMethod: 'Kiosk Payment',
+    };
+
     return (
         <div className="max-w-2xl mx-auto animate-slide-up">
             {/* Header */}
@@ -141,10 +164,10 @@ export default function BillDetailsPage() {
                 <div className="flex justify-between items-center mb-6">
                     <span className="text-kiosk-muted">Status</span>
                     <span className={`px-4 py-2 rounded-full text-kiosk-sm font-medium ${isPaid
-                            ? 'bg-green-500/20 text-green-400'
-                            : bill.status === 'OVERDUE'
-                                ? 'bg-red-500/20 text-red-400'
-                                : 'bg-yellow-500/20 text-yellow-400'
+                        ? 'bg-green-500/20 text-green-400'
+                        : bill.status === 'OVERDUE'
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-yellow-500/20 text-yellow-400'
                         }`}>
                         {isPaid ? (
                             <span className="flex items-center gap-2">
@@ -236,6 +259,15 @@ export default function BillDetailsPage() {
                         {t('billing.payNow')}
                     </button>
                 )}
+                {isPaid && (
+                    <button
+                        onClick={() => setShowReceiptModal(true)}
+                        className="btn-primary flex-1"
+                    >
+                        <Download className="w-5 h-5" />
+                        Download Receipt
+                    </button>
+                )}
                 <button
                     onClick={() => navigate(`/services/${bill.utilityType.toLowerCase()}`)}
                     className="btn-outline flex-1"
@@ -244,6 +276,14 @@ export default function BillDetailsPage() {
                     View All Bills
                 </button>
             </div>
+
+            {/* Receipt Modal */}
+            <PrintReceiptModal
+                isOpen={showReceiptModal}
+                onClose={() => setShowReceiptModal(false)}
+                receiptData={receiptData}
+            />
         </div>
     );
 }
+

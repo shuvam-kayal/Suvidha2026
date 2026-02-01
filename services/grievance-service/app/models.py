@@ -96,10 +96,11 @@ CATEGORIES = {
     ],
     UtilityType.WATER: [
         "No Water Supply", "Low Pressure", "Water Quality", 
-        "Leakage", "Billing Dispute"
+        "Leakage", "Billing Dispute", "New Connection"
     ],
     UtilityType.MUNICIPAL: [
         "Street Light", "Road Damage", "Garbage Collection", 
-        "Drainage Issue", "Property Tax"
+        "Drainage Issue", "Property Tax", "Waste Management",
+        "Bulk Waste Pickup"
     ],
 }

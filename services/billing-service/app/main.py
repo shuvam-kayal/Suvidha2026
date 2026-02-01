@@ -1,20 +1,31 @@
 """
 Billing Service - Bill Management & Payments
 SUVIDHA 2026 - C-DAC Hackathon
+
+Database-backed billing service with PostgreSQL persistence.
 """
 
 import os
 import time
+import uuid
 import secrets
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
+from decimal import Decimal
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
-    Bill, BillSummary, BillDetails, BillStatus, UtilityType,
-    Payment, PaymentRequest, PaymentStatus, Receipt
+    BillSummary, BillStatus, UtilityType,
+    PaymentRequest, PaymentStatus, Receipt
+)
+from .db import (
+    init_db, close_db, get_db, get_db_context,
+    get_all_bills, get_bill_by_id, get_bill_payments,
+    create_payment, Bill, Payment,
 )
 
 
@@ -26,80 +37,17 @@ PORT = int(os.getenv("PORT", "3002"))
 
 
 # =============================================================================
-# MOCK DATA
+# LIFESPAN
 # =============================================================================
 
-mock_bills: List[Bill] = [
-    Bill(
-        id="bill_elec_001",
-        accountId="acc_elec_001",
-        utilityType=UtilityType.ELECTRICITY,
-        billNumber="ELEC-2026-001234",
-        billDate="2026-01-01",
-        dueDate="2026-01-20",
-        amountDue=2450.00,
-        amountPaid=0,
-        status=BillStatus.PENDING,
-        details=BillDetails(
-            unitsConsumed=245,
-            ratePerUnit=8.50,
-            fixedCharges=150,
-            taxes=217.50,
-        ),
-    ),
-    Bill(
-        id="bill_gas_001",
-        accountId="acc_gas_001",
-        utilityType=UtilityType.GAS,
-        billNumber="GAS-2026-005678",
-        billDate="2026-01-05",
-        dueDate="2026-01-25",
-        amountDue=850.00,
-        amountPaid=0,
-        status=BillStatus.PENDING,
-        details=BillDetails(
-            unitsConsumed=42,
-            ratePerUnit=18.00,
-            fixedCharges=75,
-            taxes=19.00,
-        ),
-    ),
-    Bill(
-        id="bill_water_001",
-        accountId="acc_water_001",
-        utilityType=UtilityType.WATER,
-        billNumber="WTR-2026-009012",
-        billDate="2026-01-03",
-        dueDate="2026-01-23",
-        amountDue=520.00,
-        amountPaid=0,
-        status=BillStatus.PENDING,
-        details=BillDetails(
-            unitsConsumed=12000,
-            ratePerUnit=0.035,
-            fixedCharges=50,
-            taxes=50.00,
-        ),
-    ),
-    Bill(
-        id="bill_muni_001",
-        accountId="acc_muni_001",
-        utilityType=UtilityType.MUNICIPAL,
-        billNumber="MUN-2026-012345",
-        billDate="2025-12-15",
-        dueDate="2026-01-15",
-        amountDue=3200.00,
-        amountPaid=0,
-        status=BillStatus.OVERDUE,
-        details=BillDetails(
-            fixedCharges=2800,
-            taxes=400,
-            previousBalance=0,
-        ),
-    ),
-]
-
-payments: List[Payment] = []
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler."""
+    print(f"\n💳 Billing Service starting on port {PORT}")
+    await init_db()
+    yield
+    await close_db()
+    print("Billing Service stopped")
 
 
 # =============================================================================
@@ -110,6 +58,7 @@ app = FastAPI(
     title="SUVIDHA Billing Service",
     description="Bill Management & Payments",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS
@@ -130,12 +79,6 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.on_event("startup")
-async def startup():
-    print(f"\n💳 Billing Service running on port {PORT}")
-    print(f"📊 Mock bills loaded: {len(mock_bills)}")
-
-
 # =============================================================================
 # HEALTH CHECK
 # =============================================================================
@@ -143,10 +86,66 @@ async def startup():
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+    db_status = "disconnected"
+    try:
+        from .db import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        db_status = "error"
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if db_status == "connected" else "degraded",
         "service": "billing-service",
+        "database": db_status,
         "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def bill_to_summary(bill: Bill) -> dict:
+    """Convert Bill model to summary dict."""
+    return {
+        "id": str(bill.id),
+        "utilityType": bill.account.utility_type if bill.account else "UNKNOWN",
+        "billNumber": bill.bill_number,
+        "dueDate": bill.due_date.isoformat() if bill.due_date else None,
+        "amountDue": float(bill.amount_due),
+        "amountPaid": float(bill.amount_paid),
+        "status": bill.status,
+    }
+
+
+def bill_to_detail(bill: Bill) -> dict:
+    """Convert Bill model to detailed dict."""
+    return {
+        "id": str(bill.id),
+        "accountId": str(bill.account_id),
+        "utilityType": bill.account.utility_type if bill.account else "UNKNOWN",
+        "billNumber": bill.bill_number,
+        "billDate": bill.bill_date.isoformat() if bill.bill_date else None,
+        "dueDate": bill.due_date.isoformat() if bill.due_date else None,
+        "amountDue": float(bill.amount_due),
+        "amountPaid": float(bill.amount_paid),
+        "status": bill.status,
+        "details": bill.bill_details or {},
+        "payments": [
+            {
+                "id": str(p.id),
+                "amount": float(p.amount),
+                "paymentMethod": p.payment_method,
+                "transactionId": p.transaction_id,
+                "status": p.status,
+                "timestamp": p.payment_timestamp.isoformat() if p.payment_timestamp else None,
+            }
+            for p in (bill.payments or [])
+        ],
     }
 
 
@@ -160,30 +159,13 @@ async def get_bills(
     status: Optional[str] = Query(None, description="Filter by status"),
 ):
     """Get list of bills."""
-    filtered_bills = list(mock_bills)
-    
-    if type:
-        filtered_bills = [b for b in filtered_bills if b.utilityType.value == type.upper()]
-    
-    if status:
-        filtered_bills = [b for b in filtered_bills if b.status.value == status.upper()]
-    
-    # Return summary view
-    bill_summaries = [
-        BillSummary(
-            id=bill.id,
-            utilityType=bill.utilityType,
-            billNumber=bill.billNumber,
-            dueDate=bill.dueDate,
-            amountDue=bill.amountDue,
-            status=bill.status,
-        )
-        for bill in filtered_bills
-    ]
+    async with get_db_context() as db:
+        bills = await get_all_bills(db, utility_type=type, status=status)
+        bill_summaries = [bill_to_summary(bill) for bill in bills]
     
     return {
         "success": True,
-        "bills": [b.model_dump() for b in bill_summaries],
+        "bills": bill_summaries,
         "total": len(bill_summaries),
     }
 
@@ -195,21 +177,21 @@ async def get_bills(
 @app.get("/bills/{bill_id}")
 async def get_bill_details(bill_id: str):
     """Get bill details by ID."""
-    bill = next((b for b in mock_bills if b.id == bill_id), None)
+    try:
+        bill_uuid = uuid.UUID(bill_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail={"error": "Invalid bill ID format"})
     
-    if not bill:
-        raise HTTPException(status_code=404, detail={"error": "Bill not found"})
-    
-    # Get payment history for this bill
-    bill_payments = [p for p in payments if p.billId == bill_id]
-    
-    return {
-        "success": True,
-        "bill": {
-            **bill.model_dump(),
-            "payments": [p.model_dump() for p in bill_payments],
-        },
-    }
+    async with get_db_context() as db:
+        bill = await get_bill_by_id(db, bill_uuid)
+        
+        if not bill:
+            raise HTTPException(status_code=404, detail={"error": "Bill not found"})
+        
+        return {
+            "success": True,
+            "bill": bill_to_detail(bill),
+        }
 
 
 # =============================================================================
@@ -233,67 +215,74 @@ async def process_payment(data: PaymentRequest):
             }
         )
     
-    bill = next((b for b in mock_bills if b.id == bill_id), None)
-    if not bill:
-        raise HTTPException(status_code=404, detail={"error": "Bill not found"})
+    try:
+        bill_uuid = uuid.UUID(bill_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail={"error": "Invalid bill ID format"})
     
     if amount <= 0:
         raise HTTPException(status_code=400, detail={"error": "Invalid payment amount"})
     
-    remaining = bill.amountDue - bill.amountPaid
-    if amount > remaining:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "Amount exceeds balance due",
-                "balanceDue": remaining,
-            }
+    async with get_db_context() as db:
+        bill = await get_bill_by_id(db, bill_uuid)
+        
+        if not bill:
+            raise HTTPException(status_code=404, detail={"error": "Bill not found"})
+        
+        remaining = float(bill.amount_due) - float(bill.amount_paid)
+        if amount > remaining:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Amount exceeds balance due",
+                    "balanceDue": remaining,
+                }
+            )
+        
+        # Generate transaction ID
+        transaction_id = f"TXN{hex(int(time.time()))[2:].upper()}{secrets.token_hex(2).upper()}"
+        
+        # Create payment (transactional)
+        payment = await create_payment(
+            db=db,
+            bill=bill,
+            amount=Decimal(str(amount)),
+            payment_method=payment_method,
+            transaction_id=transaction_id,
         )
-    
-    # Generate transaction ID
-    transaction_id = f"TXN{hex(int(time.time()))[2:].upper()}{secrets.token_hex(2).upper()}"
-    
-    # Create payment record
-    payment = Payment(
-        id=f"pay_{int(time.time())}",
-        billId=bill_id,
-        amount=amount,
-        paymentMethod=payment_method,
-        transactionId=transaction_id,
-        status=PaymentStatus.SUCCESS,
-        timestamp=datetime.utcnow().isoformat(),
-    )
-    
-    payments.append(payment)
-    
-    # Update bill
-    bill.amountPaid += amount
-    if bill.amountPaid >= bill.amountDue:
-        bill.status = BillStatus.PAID
-    else:
-        bill.status = BillStatus.PARTIALLY_PAID
-    
-    # Generate receipt
-    receipt = Receipt(
-        receiptNumber=f"RCP-{transaction_id}",
-        transactionId=transaction_id,
-        billNumber=bill.billNumber,
-        utilityType=bill.utilityType,
-        amountPaid=amount,
-        paymentMethod=payment_method,
-        paymentDate=payment.timestamp,
-        remainingBalance=bill.amountDue - bill.amountPaid,
-        status="SUCCESS",
-    )
-    
-    print(f"✅ Payment processed: {transaction_id} - ₹{amount}")
-    
-    return {
-        "success": True,
-        "payment": payment.model_dump(),
-        "receipt": receipt.model_dump(),
-        "message": "Payment processed successfully",
-    }
+        
+        # Reload bill for updated values
+        bill = await get_bill_by_id(db, bill_uuid)
+        
+        # Generate receipt
+        receipt = {
+            "receiptNumber": f"RCP-{transaction_id}",
+            "transactionId": transaction_id,
+            "billNumber": bill.bill_number,
+            "utilityType": bill.account.utility_type if bill.account else None,
+            "amountPaid": amount,
+            "paymentMethod": payment_method,
+            "paymentDate": payment.payment_timestamp.isoformat(),
+            "remainingBalance": float(bill.amount_due) - float(bill.amount_paid),
+            "status": "SUCCESS",
+        }
+        
+        print(f"✅ Payment processed: {transaction_id} - ₹{amount}")
+        
+        return {
+            "success": True,
+            "payment": {
+                "id": str(payment.id),
+                "billId": bill_id,
+                "amount": amount,
+                "paymentMethod": payment_method,
+                "transactionId": transaction_id,
+                "status": "SUCCESS",
+                "timestamp": payment.payment_timestamp.isoformat(),
+            },
+            "receipt": receipt,
+            "message": "Payment processed successfully",
+        }
 
 
 # =============================================================================
@@ -303,19 +292,40 @@ async def process_payment(data: PaymentRequest):
 @app.get("/payments/history")
 async def get_payment_history(billId: Optional[str] = Query(None)):
     """Get payment history."""
-    filtered_payments = list(payments)
-    
-    if billId:
-        filtered_payments = [p for p in filtered_payments if p.billId == billId]
-    
-    # Sort by most recent first
-    filtered_payments.sort(key=lambda p: p.timestamp, reverse=True)
-    
-    return {
-        "success": True,
-        "payments": [p.model_dump() for p in filtered_payments],
-        "total": len(filtered_payments),
-    }
+    async with get_db_context() as db:
+        if billId:
+            try:
+                bill_uuid = uuid.UUID(billId)
+                payments = await get_bill_payments(db, bill_uuid)
+            except ValueError:
+                payments = []
+        else:
+            # Get all payments (limited for performance)
+            from sqlalchemy import select
+            from .db import Payment
+            result = await db.execute(
+                select(Payment).order_by(Payment.payment_timestamp.desc()).limit(100)
+            )
+            payments = list(result.scalars().all())
+        
+        payment_list = [
+            {
+                "id": str(p.id),
+                "billId": str(p.bill_id),
+                "amount": float(p.amount),
+                "paymentMethod": p.payment_method,
+                "transactionId": p.transaction_id,
+                "status": p.status,
+                "timestamp": p.payment_timestamp.isoformat() if p.payment_timestamp else None,
+            }
+            for p in payments
+        ]
+        
+        return {
+            "success": True,
+            "payments": payment_list,
+            "total": len(payment_list),
+        }
 
 
 # =============================================================================
@@ -325,28 +335,43 @@ async def get_payment_history(billId: Optional[str] = Query(None)):
 @app.get("/payments/{payment_id}/receipt")
 async def get_payment_receipt(payment_id: str):
     """Get payment receipt."""
-    payment = next((p for p in payments if p.id == payment_id), None)
+    try:
+        payment_uuid = uuid.UUID(payment_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail={"error": "Invalid payment ID format"})
     
-    if not payment:
-        raise HTTPException(status_code=404, detail={"error": "Payment not found"})
-    
-    bill = next((b for b in mock_bills if b.id == payment.billId), None)
-    
-    receipt = Receipt(
-        receiptNumber=f"RCP-{payment.transactionId}",
-        transactionId=payment.transactionId,
-        billNumber=bill.billNumber if bill else None,
-        utilityType=bill.utilityType if bill else None,
-        amountPaid=payment.amount,
-        paymentMethod=payment.paymentMethod,
-        paymentDate=payment.timestamp,
-        status=payment.status.value,
-    )
-    
-    return {
-        "success": True,
-        "receipt": receipt.model_dump(),
-    }
+    async with get_db_context() as db:
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+        from .db import Payment
+        
+        result = await db.execute(
+            select(Payment)
+            .options(selectinload(Payment.bill).selectinload(Bill.account))
+            .where(Payment.id == payment_uuid)
+        )
+        payment = result.scalar_one_or_none()
+        
+        if not payment:
+            raise HTTPException(status_code=404, detail={"error": "Payment not found"})
+        
+        bill = payment.bill
+        
+        receipt = {
+            "receiptNumber": f"RCP-{payment.transaction_id}",
+            "transactionId": payment.transaction_id,
+            "billNumber": bill.bill_number if bill else None,
+            "utilityType": bill.account.utility_type if bill and bill.account else None,
+            "amountPaid": float(payment.amount),
+            "paymentMethod": payment.payment_method,
+            "paymentDate": payment.payment_timestamp.isoformat() if payment.payment_timestamp else None,
+            "status": payment.status,
+        }
+        
+        return {
+            "success": True,
+            "receipt": receipt,
+        }
 
 
 # =============================================================================

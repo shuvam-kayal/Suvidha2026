@@ -15,6 +15,7 @@ import BillDetailsPage from './pages/BillDetailsPage';
 import PaymentPage from './pages/PaymentPage';
 import FileComplaintPage from './pages/FileComplaintPage';
 import TrackComplaintPage from './pages/TrackComplaintPage';
+import ServiceRequestPage from './pages/ServiceRequestPage';
 
 function App() {
     return (
@@ -75,9 +76,20 @@ function App() {
                 />
                 <Route path="/grievance/track" element={<TrackComplaintPage />} />
                 <Route path="/grievance/track/:ticketNumber" element={<TrackComplaintPage />} />
+
+                {/* Service Request routes */}
+                <Route
+                    path="/service-request"
+                    element={
+                        <ProtectedRoute>
+                            <ServiceRequestPage />
+                        </ProtectedRoute>
+                    }
+                />
             </Route>
         </Routes>
     );
 }
 
 export default App;
+
